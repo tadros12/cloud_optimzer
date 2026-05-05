@@ -8,3 +8,4 @@ wheels/
 *.pdf
 # Virtual environments
 .venv
+borg_traces_data.csv
