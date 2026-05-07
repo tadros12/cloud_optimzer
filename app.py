@@ -54,7 +54,17 @@ st.title("Cloud Task Scheduling Optimization Simulator")
 st.sidebar.header("Simulation Configuration")
 
 num_nodes = st.sidebar.slider("Number of Nodes", 1, 20, 5)
-node_capacity_cu = st.sidebar.slider("Node Capacity (CU)", 100.0, 1000.0, 500.0, step=50.0)
+
+st.sidebar.subheader("Node Configurations")
+if 'node_configs' not in st.session_state or len(st.session_state['node_configs']) != num_nodes:
+    st.session_state['node_configs'] = pd.DataFrame({
+        "node_id": [f"node_{i+1}" for i in range(num_nodes)],
+        "capacity_cu": [500.0] * num_nodes,
+        "price_per_hour": [0.10] * num_nodes
+    })
+
+node_configs_df = st.sidebar.data_editor(st.session_state['node_configs'], num_rows="fixed", hide_index=True)
+
 jobs_file_path = "data/clean_google_jobs.csv"
 
 st.header("1. Data Loading")
@@ -77,8 +87,8 @@ if 'jobs' not in st.session_state:
     st.stop()
 
 jobs = st.session_state['jobs']
-nodes = generate_nodes(num_nodes, node_capacity_cu)
-st.write(f"Generated {len(nodes)} nodes with {node_capacity_cu} CU capacity each.")
+nodes = [Node(row['node_id'], row['capacity_cu'], row['price_per_hour']) for _, row in node_configs_df.iterrows()]
+st.write(f"Configured {len(nodes)} nodes based on your settings.")
 
 # --- Select and Run Schedulers ---
 st.header("2. Run Schedulers")
@@ -91,7 +101,7 @@ if st.button("Run Simulations"):
         st.subheader(f"Running {scheduler_name} Scheduler...")
         
         # Create fresh nodes for each simulation run to ensure fair comparison
-        sim_nodes = generate_nodes(num_nodes, node_capacity_cu) 
+        sim_nodes = [Node(row['node_id'], row['capacity_cu'], row['price_per_hour']) for _, row in node_configs_df.iterrows()] 
         
         simulation_results = run_simulation(jobs, sim_nodes, scheduler_name)
         if simulation_results:
