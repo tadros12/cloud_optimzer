@@ -21,10 +21,23 @@ def load_jobs_from_csv(file_path: str) -> List[Job]:
         jobs.append(job)
     return jobs
 
-def generate_nodes(num_nodes: int, capacity_cu: float, price_per_hour: float = 0.0) -> List[Node]:
+def generate_nodes(num_nodes: int = 5, capacity_cu: float = 0.0, price_per_hour: float = 0.0) -> List[Node]:
     """
-    Generates a list of Node objects with specified capacity.
+    Generates a list of Node objects representing AWS instances by default.
     """
+    if num_nodes == 5 and capacity_cu == 0.0:
+        aws_defaults = [
+            {"id": "t2.micro", "capacity_cu": 1.0, "price": 0.0116},
+            {"id": "t3.small", "capacity_cu": 2.0, "price": 0.0208},
+            {"id": "c6g.medium", "capacity_cu": 4.0, "price": 0.034},
+            {"id": "m5.large", "capacity_cu": 8.0, "price": 0.096},
+            {"id": "r5.large", "capacity_cu": 16.0, "price": 0.126}
+        ]
+        nodes = []
+        for instance in aws_defaults:
+            nodes.append(Node(node_id=instance["id"], capacity_cu=instance["capacity_cu"], price_per_hour=instance["price"]))
+        return nodes
+
     nodes = []
     for i in range(num_nodes):
         node = Node(node_id=f"node_{i+1}", capacity_cu=capacity_cu, price_per_hour=price_per_hour)

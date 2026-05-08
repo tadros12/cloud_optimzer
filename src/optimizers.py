@@ -1,7 +1,8 @@
 import random
+import math
 from typing import List, Dict, Tuple
 from .models import Job, Node
-from .engine import SimulationEngine # Assuming SimulationEngine can be used for fitness evaluation
+from .engine import SimulationEngine
 
 class GeneticAlgorithmOptimizer:
     def __init__(self, jobs: List[Job], nodes: List[Node],
@@ -15,30 +16,20 @@ class GeneticAlgorithmOptimizer:
         self.crossover_rate = crossover_rate
         self.mutation_rate = mutation_rate
         self.generations = generations
+        self.num_jobs = len(jobs)
+        self.num_nodes = len(nodes)
 
-        # Map job IDs to their index for easier chromosome representation
         self.job_id_to_index = {job.job_id: i for i, job in enumerate(jobs)}
-        self.node_id_to_index = {node.node_id: i for i, node in enumerate(nodes)}
         self.index_to_node_id = {i: node.node_id for i, node in enumerate(nodes)}
 
-
     def _initialize_population(self) -> List[List[int]]:
-        """
-        Initializes a population of random job-to-node assignments (chromosomes).
-        Each chromosome is a list where index is job index and value is node index.
-        """
         population = []
-        num_nodes = len(self.nodes)
-        num_jobs = len(self.jobs)
         for _ in range(self.population_size):
-            chromosome = [random.randint(0, num_nodes - 1) for _ in range(num_jobs)]
+            chromosome = [random.randint(0, self.num_nodes - 1) for _ in range(self.num_jobs)]
             population.append(chromosome)
         return population
 
     def _chromosome_to_assignments(self, chromosome: List[int]) -> Dict[str, List[Job]]:
-        """
-        Converts a chromosome (job-to-node index mapping) into a job assignment dictionary.
-        """
         assignments: Dict[str, List[Job]] = {node.node_id: [] for node in self.nodes}
         for job_index, node_index in enumerate(chromosome):
             job = self.jobs[job_index]
@@ -46,101 +37,230 @@ class GeneticAlgorithmOptimizer:
             assignments[node_id].append(job)
         return assignments
 
-    def _calculate_fitness(self, chromosome: List[int]) -> float:
-        """
-        Calculates the fitness of a single chromosome.
-        Lower fitness value is better (minimization problem).
-        Fitness = Makespan + (Cost * 100)
-        """
-        # Create a temporary list of nodes for simulation to avoid modifying original nodes
-        temp_nodes = [Node(n.node_id, n.capacity_cu) for n in self.nodes]
-        
-        # Apply the assignments from the chromosome to the temporary nodes
+    def _evaluate(self, chromosome: List[int]) -> Tuple[float, float, float]:
+        temp_nodes = [Node(n.node_id, n.capacity_cu, n.price_per_hour) for n in self.nodes]
         assignments = self._chromosome_to_assignments(chromosome)
+        
         for node in temp_nodes:
             node.assigned_jobs = assignments.get(node.node_id, [])
-            # For utilization calculation, we need to sum workloads of assigned jobs
             node.current_utilization_cu = sum(job.workload_cu for job in node.assigned_jobs)
 
         engine = SimulationEngine(self.jobs, temp_nodes)
         makespan = engine.calculate_makespan()
         cost = engine.calculate_execution_cost()
+        fitness = makespan + (cost * 10) # Using a smaller weight for cost so it doesn't overpower makespan
+        return fitness, makespan, cost
 
-        fitness = makespan + (cost * 100)
-        return fitness
-
-    def _select_parents(self, population: List[List[int]], fitnesses: List[float]) -> Tuple[List[int], List[int]]:
-        """
-        Selects two parents using tournament selection.
-        """
-        # Assuming lower fitness is better, so select individuals with lower fitness
-        # For simplicity, using a basic roulette wheel selection where better fitness has higher chance
-        # Invert fitness for selection probability if minimizing: higher (better) fitness = lower value
-        # Or, just use a simple tournament selection (pick N random, choose best)
-        
-        # For now, let's just pick two random parents.
-        # This needs to be improved with proper selection (e.g., tournament, roulette wheel)
-        parent1 = random.choice(population)
-        parent2 = random.choice(population)
-        return parent1, parent2
-
-    def _crossover(self, parent1: List[int], parent2: List[int]) -> Tuple[List[int], List[int]]:
-        """
-        Performs single-point crossover between two parents.
-        """
-        if random.random() < self.crossover_rate:
-            # Perform single-point crossover
-            crossover_point = random.randint(1, len(parent1) - 1)
-            offspring1 = parent1[:crossover_point] + parent2[crossover_point:]
-            offspring2 = parent2[:crossover_point] + parent1[crossover_point:]
-            return offspring1, offspring2
-        else:
-            return parent1, parent2 # No crossover, return parents as offspring
-
-    def _mutate(self, chromosome: List[int]) -> List[int]:
-        """
-        Mutates a chromosome by randomly changing a job's assigned node.
-        """
-        num_nodes = len(self.nodes)
-        mutated_chromosome = list(chromosome) # Create a mutable copy
-        for i in range(len(mutated_chromosome)):
-            if random.random() < self.mutation_rate:
-                mutated_chromosome[i] = random.randint(0, num_nodes - 1)
-        return mutated_chromosome
-
-    def optimize(self) -> Dict[str, List[Job]]:
-        """
-        Runs the Genetic Algorithm to find an optimal job-to-node assignment.
-        Returns the best assignment found.
-        """
+    def optimize(self) -> Tuple[Dict[str, List[Job]], float, float, List[float]]:
         population = self._initialize_population()
         best_chromosome = None
         best_fitness = float('inf')
+        best_makespan = 0.0
+        best_cost = 0.0
+        history = []
 
         for generation in range(self.generations):
-            fitnesses = [self._calculate_fitness(c) for c in population]
+            evaluated = [self._evaluate(c) for c in population]
+            fitnesses = [e[0] for e in evaluated]
 
-            # Find the best individual in current population
-            current_best_fitness = min(fitnesses)
-            current_best_chromosome = population[fitnesses.index(current_best_fitness)]
+            current_best_idx = fitnesses.index(min(fitnesses))
+            current_best_fitness = fitnesses[current_best_idx]
 
             if current_best_fitness < best_fitness:
                 best_fitness = current_best_fitness
-                best_chromosome = current_best_chromosome
+                best_chromosome = population[current_best_idx]
+                best_makespan = evaluated[current_best_idx][1]
+                best_cost = evaluated[current_best_idx][2]
+
+            history.append(best_fitness)
 
             new_population = []
-            for _ in range(self.population_size // 2): # Create new population through selection, crossover, mutation
-                parent1, parent2 = self._select_parents(population, fitnesses)
-                offspring1, offspring2 = self._crossover(parent1, parent2)
+            for _ in range(self.population_size // 2):
+                parent1 = random.choice(population)
+                parent2 = random.choice(population)
                 
-                new_population.append(self._mutate(offspring1))
-                new_population.append(self._mutate(offspring2))
+                # Crossover
+                if random.random() < self.crossover_rate:
+                    crossover_point = random.randint(1, len(parent1) - 1)
+                    offspring1 = parent1[:crossover_point] + parent2[crossover_point:]
+                    offspring2 = parent2[:crossover_point] + parent1[crossover_point:]
+                else:
+                    offspring1, offspring2 = list(parent1), list(parent2)
+                
+                # Mutation
+                for off in [offspring1, offspring2]:
+                    for i in range(len(off)):
+                        if random.random() < self.mutation_rate:
+                            off[i] = random.randint(0, self.num_nodes - 1)
+                    new_population.append(off)
 
-            population = new_population[:self.population_size] # Ensure population size is maintained
+            population = new_population[:self.population_size]
 
-            print(f"Generation {generation+1}: Best Fitness = {best_fitness:.2f}")
+        assignments = self._chromosome_to_assignments(best_chromosome)
+        return assignments, best_makespan, best_cost, history
 
-        if best_chromosome is None:
-            raise Exception("Genetic Algorithm failed to find a solution.")
+class GreyWolfOptimizer:
+    def __init__(self, jobs: List[Job], nodes: List[Node],
+                 population_size: int = 5,
+                 iterations: int = 50):
+        self.jobs = jobs
+        self.nodes = nodes
+        self.population_size = population_size
+        self.iterations = iterations
+        self.num_jobs = len(jobs)
+        self.num_nodes = len(nodes)
+        self.index_to_node_id = {i: node.node_id for i, node in enumerate(nodes)}
 
-        return self._chromosome_to_assignments(best_chromosome)
+    def _chromosome_to_assignments(self, positions: List[float]) -> Dict[str, List[Job]]:
+        assignments: Dict[str, List[Job]] = {node.node_id: [] for node in self.nodes}
+        for job_index, pos in enumerate(positions):
+            node_index = int(round(pos))
+            node_index = max(0, min(node_index, self.num_nodes - 1))
+            job = self.jobs[job_index]
+            node_id = self.index_to_node_id[node_index]
+            assignments[node_id].append(job)
+        return assignments
+
+    def _evaluate(self, positions: List[float]) -> Tuple[float, float, float]:
+        temp_nodes = [Node(n.node_id, n.capacity_cu, n.price_per_hour) for n in self.nodes]
+        assignments = self._chromosome_to_assignments(positions)
+        
+        for node in temp_nodes:
+            node.assigned_jobs = assignments.get(node.node_id, [])
+        
+        engine = SimulationEngine(self.jobs, temp_nodes)
+        makespan = engine.calculate_makespan()
+        cost = engine.calculate_execution_cost()
+        fitness = makespan + (cost * 10)
+        return fitness, makespan, cost
+
+    def optimize(self) -> Tuple[Dict[str, List[Job]], float, float, List[float]]:
+        population = []
+        for _ in range(self.population_size):
+            pos = [random.uniform(0, self.num_nodes - 1) for _ in range(self.num_jobs)]
+            population.append(pos)
+
+        alpha_pos, alpha_score = None, float("inf")
+        beta_pos, beta_score = None, float("inf")
+        delta_pos, delta_score = None, float("inf")
+        
+        best_makespan, best_cost = 0.0, 0.0
+        history = []
+
+        for t in range(self.iterations):
+            for i in range(self.population_size):
+                fitness, makespan, cost = self._evaluate(population[i])
+
+                if fitness < alpha_score:
+                    delta_score, delta_pos = beta_score, beta_pos
+                    beta_score, beta_pos = alpha_score, alpha_pos
+                    alpha_score, alpha_pos = fitness, population[i].copy()
+                    best_makespan, best_cost = makespan, cost
+                elif fitness < beta_score:
+                    delta_score, delta_pos = beta_score, beta_pos
+                    beta_score, beta_pos = fitness, population[i].copy()
+                elif fitness < delta_score:
+                    delta_score, delta_pos = fitness, population[i].copy()
+
+            history.append(alpha_score)
+            a = 2.0 - t * (2.0 / self.iterations)
+
+            for i in range(self.population_size):
+                for j in range(self.num_jobs):
+                    def get_x(pos, score, current):
+                        if pos is None: return current
+                        r1, r2 = random.random(), random.random()
+                        A = 2.0 * a * r1 - a
+                        C = 2.0 * r2
+                        D = abs(C * pos[j] - current)
+                        return pos[j] - A * D
+
+                    X1 = get_x(alpha_pos, alpha_score, population[i][j])
+                    X2 = get_x(beta_pos, beta_score, population[i][j])
+                    X3 = get_x(delta_pos, delta_score, population[i][j])
+
+                    population[i][j] = (X1 + X2 + X3) / 3.0
+                    population[i][j] = max(0.0, min(population[i][j], float(self.num_nodes - 1)))
+
+        assignments = self._chromosome_to_assignments(alpha_pos)
+        return assignments, best_makespan, best_cost, history
+
+class ParticleSwarmOptimizer:
+    def __init__(self, jobs: List[Job], nodes: List[Node],
+                 population_size: int = 20,
+                 iterations: int = 50,
+                 inertia_weight: float = 0.7,
+                 c1: float = 1.5,
+                 c2: float = 1.5):
+        self.jobs = jobs
+        self.nodes = nodes
+        self.population_size = population_size
+        self.iterations = iterations
+        self.inertia_weight = inertia_weight
+        self.c1 = c1
+        self.c2 = c2
+        self.num_jobs = len(jobs)
+        self.num_nodes = len(nodes)
+        self.index_to_node_id = {i: node.node_id for i, node in enumerate(nodes)}
+
+    def _chromosome_to_assignments(self, positions: List[float]) -> Dict[str, List[Job]]:
+        assignments: Dict[str, List[Job]] = {node.node_id: [] for node in self.nodes}
+        for job_index, pos in enumerate(positions):
+            node_index = int(round(pos))
+            node_index = max(0, min(node_index, self.num_nodes - 1))
+            job = self.jobs[job_index]
+            node_id = self.index_to_node_id[node_index]
+            assignments[node_id].append(job)
+        return assignments
+
+    def _evaluate(self, positions: List[float]) -> Tuple[float, float, float]:
+        temp_nodes = [Node(n.node_id, n.capacity_cu, n.price_per_hour) for n in self.nodes]
+        assignments = self._chromosome_to_assignments(positions)
+        for node in temp_nodes: node.assigned_jobs = assignments.get(node.node_id, [])
+        engine = SimulationEngine(self.jobs, temp_nodes)
+        makespan = engine.calculate_makespan()
+        cost = engine.calculate_execution_cost()
+        fitness = makespan + (cost * 10)
+        return fitness, makespan, cost
+
+    def optimize(self) -> Tuple[Dict[str, List[Job]], float, float, List[float]]:
+        # Initialize particles
+        particles = [[random.uniform(0, self.num_nodes - 1) for _ in range(self.num_jobs)] for _ in range(self.population_size)]
+        velocities = [[random.uniform(-1, 1) for _ in range(self.num_jobs)] for _ in range(self.population_size)]
+        pbest = particles.copy()
+        pbest_scores = [float('inf')] * self.population_size
+        
+        gbest = None
+        gbest_score = float('inf')
+        gbest_makespan = 0.0
+        gbest_cost = 0.0
+        history = []
+
+        for t in range(self.iterations):
+            for i in range(self.population_size):
+                fitness, makespan, cost = self._evaluate(particles[i])
+                if fitness < pbest_scores[i]:
+                    pbest_scores[i] = fitness
+                    pbest[i] = particles[i].copy()
+                
+                if fitness < gbest_score:
+                    gbest_score = fitness
+                    gbest = particles[i].copy()
+                    gbest_makespan = makespan
+                    gbest_cost = cost
+            
+            history.append(gbest_score)
+
+            for i in range(self.population_size):
+                for j in range(self.num_jobs):
+                    r1, r2 = random.random(), random.random()
+                    vel = (self.inertia_weight * velocities[i][j] + 
+                           self.c1 * r1 * (pbest[i][j] - particles[i][j]) + 
+                           self.c2 * r2 * (gbest[j] - particles[i][j]))
+                    velocities[i][j] = max(-self.num_nodes, min(vel, self.num_nodes)) # clamp velocity
+                    
+                    particles[i][j] += velocities[i][j]
+                    particles[i][j] = max(0.0, min(particles[i][j], float(self.num_nodes - 1)))
+
+        assignments = self._chromosome_to_assignments(gbest)
+        return assignments, gbest_makespan, gbest_cost, history

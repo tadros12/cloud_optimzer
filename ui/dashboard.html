@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md">
+        <h1 class="text-2xl font-bold mb-6">Cloud Optimizer Dashboard</h1>
+        
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Population Size</label>
+                <input type="number" id="pop-size" value="20" class="mt-1 block w-full border border-gray-300 rounded-md p-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Iterations</label>
+                <input type="number" id="iterations" value="50" class="mt-1 block w-full border border-gray-300 rounded-md p-2">
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Algorithm</label>
+            <select id="algorithm-select" class="block w-full border border-gray-300 rounded-md p-2">
+                <option value="GA">Genetic Algorithm (GA)</option>
+                <option value="PSO">Particle Swarm Optimization (PSO)</option>
+                <option value="GWO">Grey Wolf Optimizer (GWO)</option>
+            </select>
+        </div>
+
+        <button id="run-btn" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition">
+            Run Simulation
+        </button>
+
+        <div class="mt-8 border-t pt-6">
+            <h2 class="text-xl font-bold mb-4">Results</h2>
+            <div id="results-display" class="bg-gray-50 p-4 rounded border text-sm font-mono overflow-auto h-48">
+                Waiting for simulation to run...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const runBtn = document.getElementById('run-btn');
+            const popSizeInput = document.getElementById('pop-size');
+            const iterationsInput = document.getElementById('iterations');
+            const algoSelect = document.getElementById('algorithm-select');
+            const resultsDisplay = document.getElementById('results-display');
+
+            runBtn.addEventListener('click', async () => {
+                const popSize = popSizeInput.value;
+                const iterations = iterationsInput.value;
+                const algorithm = algoSelect.value;
+
+                // Update UI state to loading
+                runBtn.disabled = true;
+                runBtn.textContent = 'Running...';
+                runBtn.classList.replace('bg-blue-600', 'bg-gray-400');
+                runBtn.classList.replace('hover:bg-blue-700', 'hover:bg-gray-400');
+                resultsDisplay.textContent = `Running ${algorithm} simulation...`;
+
+                try {
+                    // Call Python function exposed by pywebview
+                    const results = await window.pywebview.api.run_simulation(popSize, iterations, algorithm);
+                    
+                    if (results.error) {
+                        resultsDisplay.textContent = `Error: ${results.error}`;
+                    } else {
+                        // Display results (logging as requested, and displaying on screen)
+                        console.log("Simulation Results:", results);
+                        resultsDisplay.textContent = JSON.stringify(results, null, 2);
+                    }
+                } catch (error) {
+                    console.error("Failed to run simulation:", error);
+                    resultsDisplay.textContent = `Error calling python api: ${error.message}`;
+                } finally {
+                    // Reset UI state
+                    runBtn.disabled = false;
+                    runBtn.textContent = 'Run Simulation';
+                    runBtn.classList.replace('bg-gray-400', 'bg-blue-600');
+                    runBtn.classList.replace('hover:bg-gray-400', 'hover:bg-blue-700');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
