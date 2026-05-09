@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Cloud Optimizer CI</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@600;700&amp;family=Inter:wght@400;700&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+    <!-- Load Chart.js for real dynamic plotting -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#4cd7f6",
+                        "secondary": "#fbabff",
+                        "surface-container-low": "#171d1e",
+                        "surface-container-highest": "#303638",
+                        "on-surface": "#dee3e6",
+                        "on-surface-variant": "#bcc9cd",
+                        "outline-variant": "#3d494c",
+                        "background": "#0e1416",
+                        "on-background": "#dee3e6",
+                        "error": "#ffb4ab",
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #020617; font-family: 'Inter', sans-serif;} 
+        .glass-panel { background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .input-glass { background-color: rgba(0, 0, 0, 0.3); border: none; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+        .input-glass:focus { border-bottom-color: #4cd7f6; box-shadow: 0 1px 0 0 #4cd7f6; outline: none; }
+        .glow-active { box-shadow: 0 0 15px rgba(76,215,246,0.5); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body class="text-on-background overflow-hidden selection:bg-primary selection:text-black">
+
+<!-- SideNavBar (Zone A) -->
+<aside class="fixed left-0 top-0 h-full flex flex-col w-64 glass-panel border-r border-outline-variant/20 z-50 overflow-y-auto">
+    <div class="p-6 border-b border-outline-variant/20 flex-shrink-0">
+        <h1 class="font-bold text-2xl text-primary drop-shadow-[0_0_15px_rgba(76,215,246,0.5)] mb-2" style="font-family: 'Geist';">Cloud Optimizer</h1>
+        <p class="text-xs text-on-surface-variant flex items-center gap-2 tracking-widest uppercase font-bold">
+            <span class="w-2 h-2 rounded-full bg-primary glow-active inline-block"></span> Active
+        </p>
+    </div>
+
+    <!-- Navigation -->
+    <div class="flex-1 py-4 flex flex-col gap-2 flex-shrink-0">
+        <a class="flex items-center gap-4 px-6 py-2 text-primary font-bold border-r-2 border-primary bg-primary/10" href="#">
+            <span class="material-symbols-outlined">dashboard</span> Control Center
+        </a>
+    </div>
+
+    <!-- Controls -->
+    <div class="p-6 border-t border-outline-variant/20 flex flex-col gap-6 flex-shrink-0">
+        
+        <!-- Algorithm Selection -->
+        <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant">Algorithm</label>
+            <div class="flex p-1 bg-surface-container-highest rounded-full border border-outline-variant/30" id="algo-group">
+                <button class="algo-btn flex-1 py-1 rounded-full bg-primary text-black text-xs font-bold shadow-sm">GA</button>
+                <button class="algo-btn flex-1 py-1 rounded-full text-on-surface-variant hover:text-white text-xs font-bold transition-colors">PSO</button>
+                <button class="algo-btn flex-1 py-1 rounded-full text-on-surface-variant hover:text-white text-xs font-bold transition-colors">GWO</button>
+            </div>
+        </div>
+
+        <!-- Population Size -->
+        <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant flex justify-between">
+                Population
+            </label>
+            <div class="flex items-center gap-2">
+                <input id="pop-range" type="range" min="10" max="200" value="20" class="w-full h-1 bg-surface-container-highest rounded-full appearance-none cursor-pointer accent-primary">
+                <input id="pop-input" type="number" value="20" class="w-16 input-glass text-center text-sm font-mono text-on-surface rounded-sm py-1">
+            </div>
+        </div>
+
+        <!-- Iterations -->
+        <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant flex justify-between">
+                Iterations
+            </label>
+            <div class="flex items-center gap-2">
+                <input id="iter-range" type="range" min="10" max="1000" value="50" class="w-full h-1 bg-surface-container-highest rounded-full appearance-none cursor-pointer accent-primary">
+                <input id="iter-input" type="number" value="50" class="w-16 input-glass text-center text-sm font-mono text-on-surface rounded-sm py-1">
+            </div>
+        </div>
+
+        <!-- Seed -->
+        <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant flex justify-between">
+                Seed
+            </label>
+            <div class="flex items-center gap-2">
+                <input id="seed-range" type="range" min="0" max="9999" value="42" class="w-full h-1 bg-surface-container-highest rounded-full appearance-none cursor-pointer accent-primary">
+                <input id="seed-input" type="number" value="42" class="w-16 input-glass text-center text-sm font-mono text-on-surface rounded-sm py-1">
+            </div>
+        </div>
+
+        <!-- Hyperparameters -->
+        <div id="hyperparams-container" class="flex flex-col gap-4 mt-2 p-4 bg-white/5 rounded-lg">
+            <!-- GA -->
+            <div id="ga-params" class="flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant">Crossover (Pc)</label>
+                    <input id="ga-pc" type="number" step="0.01" value="0.95" class="w-16 input-glass text-center text-sm font-mono text-on-surface rounded-sm py-1">
+                </div>
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant">Mutation (Pm)</label>
+                    <input id="ga-pm" type="number" step="0.01" value="0.02" class="w-16 input-glass text-center text-sm font-mono text-on-surface rounded-sm py-1">
+                </div>
+            </div>
+            <!-- PSO -->
+            <div id="pso-params" class="flex flex-col gap-4 hidden">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant">Inertia (w)</label>
+                    <input id="pso-w" type="number" step="0.1" value="0.7" class="w-16 input-glass text-center text-sm font-mono text-on-surface rounded-sm py-1">
+                </div>
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant">Cognitive (c1)</label>
+                    <input id="pso-c1" type="number" step="0.1" value="1.5" class="w-16 input-glass text-center text-sm font-mono text-on-surface rounded-sm py-1">
+                </div>
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant">Social (c2)</label>
+                    <input id="pso-c2" type="number" step="0.1" value="1.5" class="w-16 input-glass text-center text-sm font-mono text-on-surface rounded-sm py-1">
+                </div>
+            </div>
+            <!-- GWO -->
+            <div id="gwo-params" class="flex flex-col gap-2 hidden">
+                <label class="text-xs text-on-surface-variant">GWO decays 'a' from 2 to 0 automatically.</label>
+            </div>
+        </div>
+
+        <button id="run-btn" class="w-full py-4 rounded-lg bg-gradient-to-r from-primary to-secondary text-black text-sm font-bold hover:opacity-90 transition-all shadow-[0_0_15px_rgba(76,215,246,0.3)]">
+            Run Simulation
+        </button>
+    </div>
+</aside>
+
+<!-- Main Canvas -->
+<main class="ml-64 p-8 h-screen overflow-y-auto flex flex-col gap-8">
+    
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 h-96">
+        <!-- Convergence Chart Container -->
+        <div class="glass-panel rounded-xl p-6 flex flex-col relative h-full">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-on-surface">Fitness Score vs. Generation</h2>
+                <span class="material-symbols-outlined text-on-surface-variant">show_chart</span>
+            </div>
+            <div class="flex-1 relative w-full h-full">
+                <canvas id="convergenceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Makespan vs Cost Chart Container -->
+        <div class="glass-panel rounded-xl p-6 flex flex-col relative h-full">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-on-surface">Makespan vs. Execution Cost</h2>
+                <span class="material-symbols-outlined text-on-surface-variant">bar_chart</span>
+            </div>
+            <div class="flex-1 relative w-full h-full">
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Node Table -->
+    <div class="glass-panel rounded-xl p-6 flex-1 min-h-[300px] flex flex-col">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-lg font-bold text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">dns</span> Active Node Cluster
+            </h2>
+            <button id="add-node-btn" class="px-4 py-2 rounded-lg bg-primary text-black font-bold text-sm hover:opacity-90 transition-all">+ Add Node</button>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="border-b border-white/10 text-on-surface-variant text-xs uppercase tracking-widest">
+                        <th class="py-4 px-2 font-normal">Instance ID</th>
+                        <th class="py-4 px-2 font-normal text-right">Speed (CU)</th>
+                        <th class="py-4 px-2 font-normal text-right">Cost/Hr ($)</th>
+                        <th class="py-4 px-2 font-normal text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="nodes-tbody" class="text-sm font-mono text-on-surface">
+                    <tr><td colspan="4" class="text-center py-8 text-on-surface-variant">Loading cluster data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        
+        // Sync Range and Input fields
+        const setupSync = (rangeId, inputId) => {
+            const range = document.getElementById(rangeId);
+            const input = document.getElementById(inputId);
+            range.addEventListener('input', () => input.value = range.value);
+            input.addEventListener('input', () => range.value = input.value);
+        };
+        setupSync('pop-range', 'pop-input');
+        setupSync('iter-range', 'iter-input');
+        setupSync('seed-range', 'seed-input');
+
+        // Algorithm Buttons
+        let selectedAlgo = 'GA';
+        const algoBtns = document.querySelectorAll('.algo-btn');
+        algoBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                algoBtns.forEach(b => {
+                    b.className = 'algo-btn flex-1 py-1 rounded-full text-on-surface-variant hover:text-white text-xs font-bold transition-colors';
+                });
+                e.target.className = 'algo-btn flex-1 py-1 rounded-full bg-primary text-black text-xs font-bold shadow-sm';
+                selectedAlgo = e.target.textContent.trim();
+                
+                // Toggle hyperparams visibility
+                document.getElementById('ga-params').classList.add('hidden');
+                document.getElementById('pso-params').classList.add('hidden');
+                document.getElementById('gwo-params').classList.add('hidden');
+                
+                if (selectedAlgo === 'GA') document.getElementById('ga-params').classList.remove('hidden');
+                else if (selectedAlgo === 'PSO') document.getElementById('pso-params').classList.remove('hidden');
+                else if (selectedAlgo === 'GWO') document.getElementById('gwo-params').classList.remove('hidden');
+            });
+        });
+
+        // Setup Chart.js
+        Chart.defaults.color = '#bcc9cd';
+        Chart.defaults.font.family = 'Inter';
+        
+        const ctxConv = document.getElementById('convergenceChart').getContext('2d');
+        const convergenceChart = new Chart(ctxConv, {
+            type: 'line',
+            data: { labels: [], datasets: [] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'bottom' } },
+                scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, title: {display: true, text: "Generations / Iterations"} },
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, title: {display: true, text: "Fitness"} }
+                }
+            }
+        });
+
+        const ctxBar = document.getElementById('barChart').getContext('2d');
+        const barChart = new Chart(ctxBar, {
+            type: 'bar',
+            data: { labels: [], datasets: [] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'bottom' } },
+                scales: {
+                    y: { type: 'linear', display: true, position: 'left', grid: { color: 'rgba(255,255,255,0.05)' }, title: {display: true, text: "Makespan"} },
+                    y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: {display: true, text: "Cost"} }
+                }
+            }
+        });
+
+        // Node Management
+        const loadNodes = async () => {
+            const nodes = await window.pywebview.api.get_nodes();
+            const tbody = document.getElementById('nodes-tbody');
+            tbody.innerHTML = '';
+            nodes.forEach(node => {
+                tbody.innerHTML += `
+                    <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        <td class="py-2 px-2 text-primary font-bold">${node.id}</td>
+                        <td class="py-2 px-2 text-right">
+                            <input id="cap-${node.id}" type="number" step="0.1" value="${node.capacity}" class="w-24 input-glass text-right text-sm font-mono text-on-surface rounded-sm py-1" onchange="updateNode('${node.id}')">
+                        </td>
+                        <td class="py-2 px-2 text-right">
+                            <input id="price-${node.id}" type="number" step="0.001" value="${node.price}" class="w-24 input-glass text-right text-sm font-mono text-on-surface rounded-sm py-1" onchange="updateNode('${node.id}')">
+                        </td>
+                        <td class="py-2 px-2 text-center">
+                            <button onclick="deleteNode('${node.id}')" class="text-on-surface-variant hover:text-error transition-colors p-2">
+                                <span class="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        };
+
+        window.updateNode = async (id) => {
+            const capacity = document.getElementById(`cap-${id}`).value;
+            const price = document.getElementById(`price-${id}`).value;
+            await window.pywebview.api.update_node(id, capacity, price);
+        };
+
+        window.deleteNode = async (id) => {
+            await window.pywebview.api.delete_node(id);
+            await loadNodes();
+        };
+
+        document.getElementById('add-node-btn').addEventListener('click', async () => {
+            const id = 'node_' + Math.floor(Math.random() * 10000);
+            await window.pywebview.api.add_node(id, 2.0, 0.05);
+            await loadNodes();
+        });
+
+        // Initialize PyWebView connection
+        let nodesLoaded = false;
+        const initData = async () => {
+            if (window.pywebview && window.pywebview.api && !nodesLoaded) {
+                try {
+                    await loadNodes();
+                    nodesLoaded = true;
+                } catch(e) {
+                    console.error(e);
+                }
+            }
+            if(!nodesLoaded) {
+                setTimeout(initData, 200); // Retry until loaded
+            }
+        };
+        setTimeout(initData, 200);
+
+        // Run Simulation
+        const runBtn = document.getElementById('run-btn');
+        runBtn.addEventListener('click', async () => {
+            runBtn.disabled = true;
+            runBtn.textContent = 'Running Optimization...';
+            
+            try {
+                const popSize = document.getElementById('pop-input').value;
+                const iterations = document.getElementById('iter-input').value;
+                const seed = document.getElementById('seed-input').value;
+                
+                // Get Hyperparameters
+                let hyperparams = {};
+                if (selectedAlgo === 'GA') {
+                    hyperparams.pc = document.getElementById('ga-pc').value;
+                    hyperparams.pm = document.getElementById('ga-pm').value;
+                } else if (selectedAlgo === 'PSO') {
+                    hyperparams.w = document.getElementById('pso-w').value;
+                    hyperparams.c1 = document.getElementById('pso-c1').value;
+                    hyperparams.c2 = document.getElementById('pso-c2').value;
+                }
+
+                const results = await window.pywebview.api.run_simulation(popSize, iterations, selectedAlgo, seed, hyperparams);
+                
+                if(results.error) {
+                    alert("Error: " + results.error);
+                } else {
+                    // Update Line Chart (Convergence) Accumulatively
+                    const maxGenerations = Math.max(results.convergence_history.length, convergenceChart.data.labels.length);
+                    const generations = Array.from({length: maxGenerations}, (_, i) => i + 1);
+                    convergenceChart.data.labels = generations;
+                    
+                    let color = '#4cd7f6'; // GA (Cyan)
+                    if(results.algorithm === 'PSO') color = '#fbabff'; // PSO (Pink)
+                    if(results.algorithm === 'GWO') color = '#ae05c6'; // GWO (Purple)
+
+                    const datasetLabel = `${results.algorithm} Fitness`;
+                    let existingLineIdx = convergenceChart.data.datasets.findIndex(d => d.label === datasetLabel);
+                    
+                    if (existingLineIdx !== -1) {
+                        convergenceChart.data.datasets[existingLineIdx].data = results.convergence_history;
+                    } else {
+                        convergenceChart.data.datasets.push({
+                            label: datasetLabel,
+                            data: results.convergence_history,
+                            borderColor: color,
+                            backgroundColor: color + '33',
+                            fill: false,
+                            tension: 0.4,
+                            borderWidth: 2
+                        });
+                    }
+                    convergenceChart.update();
+
+                    // Update Bar Chart (Makespan vs Cost) Accumulatively
+                    let existingBarIdx = barChart.data.labels.indexOf(results.algorithm);
+                    
+                    if (barChart.data.datasets.length === 0) {
+                         barChart.data.datasets.push({ label: 'Makespan', data: [], backgroundColor: '#4cd7f6', yAxisID: 'y' });
+                         barChart.data.datasets.push({ label: 'Execution Cost ($)', data: [], backgroundColor: '#fbabff', yAxisID: 'y1' });
+                    }
+
+                    if (existingBarIdx !== -1) {
+                        barChart.data.datasets[0].data[existingBarIdx] = results.makespan;
+                        barChart.data.datasets[1].data[existingBarIdx] = results.cost;
+                    } else {
+                        barChart.data.labels.push(results.algorithm);
+                        barChart.data.datasets[0].data.push(results.makespan);
+                        barChart.data.datasets[1].data.push(results.cost);
+                    }
+                    barChart.update();
+                }
+            } catch (error) {
+                console.error("Simulation failed:", error);
+                alert("Simulation error: " + error.message);
+            } finally {
+                runBtn.disabled = false;
+                runBtn.textContent = 'Run Simulation';
+            }
+        });
+    });
+</script>
+</body>
+</html>
