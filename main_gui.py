@@ -4,7 +4,7 @@ import json
 import random
 import threading
 from src.data_loader import generate_nodes
-from src.optimizers import GeneticAlgorithmOptimizer, GreyWolfOptimizer, ParticleSwarmOptimizer
+from src.optimizers import GeneticAlgorithmOptimizer, GreyWolfOptimizer, ParticleSwarmOptimizer, BeeColonyOptimization
 from src.models import Job
 
 class Api:
@@ -63,19 +63,28 @@ class Api:
         }
 
         try:
+            ext_freq = int(hyperparams.get("ext_freq", 0))
+            ext_percent = float(hyperparams.get("ext_percent", 0.10))
+            
             if algorithm == "GA":
                 pc = float(hyperparams.get("pc", 0.95))
                 pm = float(hyperparams.get("pm", 0.02))
-                optimizer = GeneticAlgorithmOptimizer(self.jobs, self.nodes, population_size=pop_size, generations=iterations, crossover_rate=pc, mutation_rate=pm)
+                optimizer = GeneticAlgorithmOptimizer(self.jobs, self.nodes, population_size=pop_size, generations=iterations, crossover_rate=pc, mutation_rate=pm, ext_freq=ext_freq, ext_percent=ext_percent)
                 assignments, makespan, cost, history = optimizer.optimize()
             elif algorithm == "PSO":
                 w = float(hyperparams.get("w", 0.7))
                 c1 = float(hyperparams.get("c1", 1.5))
                 c2 = float(hyperparams.get("c2", 1.5))
-                optimizer = ParticleSwarmOptimizer(self.jobs, self.nodes, population_size=pop_size, iterations=iterations, inertia_weight=w, c1=c1, c2=c2)
+                optimizer = ParticleSwarmOptimizer(self.jobs, self.nodes, population_size=pop_size, iterations=iterations, inertia_weight=w, c1=c1, c2=c2, ext_freq=ext_freq, ext_percent=ext_percent)
                 assignments, makespan, cost, history = optimizer.optimize()
             elif algorithm == "GWO":
-                optimizer = GreyWolfOptimizer(self.jobs, self.nodes, population_size=pop_size, iterations=iterations)
+                optimizer = GreyWolfOptimizer(self.jobs, self.nodes, population_size=pop_size, iterations=iterations, ext_freq=ext_freq, ext_percent=ext_percent)
+                assignments, makespan, cost, history = optimizer.optimize()
+            elif algorithm == "BCO":
+                b = int(hyperparams.get("b", 20))
+                nc = int(hyperparams.get("nc", 5))
+                # population_size is mapped to B for BCO.
+                optimizer = BeeColonyOptimization(self.jobs, self.nodes, population_size=b, iterations=iterations, nc=nc, ext_freq=ext_freq, ext_percent=ext_percent)
                 assignments, makespan, cost, history = optimizer.optimize()
             else:
                 raise ValueError("Unknown algorithm")

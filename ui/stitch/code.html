@@ -70,6 +70,7 @@
                 <button class="algo-btn flex-1 py-1 rounded-full bg-primary text-black text-xs font-bold shadow-sm">GA</button>
                 <button class="algo-btn flex-1 py-1 rounded-full text-on-surface-variant hover:text-white text-xs font-bold transition-colors">PSO</button>
                 <button class="algo-btn flex-1 py-1 rounded-full text-on-surface-variant hover:text-white text-xs font-bold transition-colors">GWO</button>
+                <button class="algo-btn flex-1 py-1 rounded-full text-on-surface-variant hover:text-white text-xs font-bold transition-colors">BCO</button>
             </div>
         </div>
 
@@ -106,6 +107,28 @@
             </div>
         </div>
 
+        
+        <!-- Diversity Extension -->
+        <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant flex justify-between">
+                Ext Freq
+            </label>
+            <div class="flex items-center gap-2">
+                <input id="ext-freq-range" type="range" min="0" max="500" value="0" class="w-full h-1 bg-surface-container-highest rounded-full appearance-none cursor-pointer accent-primary">
+                <input id="ext-freq-input" type="number" value="0" class="w-16 input-glass text-center text-sm font-mono text-on-surface rounded-sm py-1">
+            </div>
+        </div>
+        
+        <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant flex justify-between">
+                Ext Percent
+            </label>
+            <div class="flex items-center gap-2">
+                <input id="ext-pct-range" type="range" min="0.01" max="1.00" step="0.01" value="0.10" class="w-full h-1 bg-surface-container-highest rounded-full appearance-none cursor-pointer accent-primary">
+                <input id="ext-pct-input" type="number" step="0.01" value="0.10" class="w-16 input-glass text-center text-sm font-mono text-on-surface rounded-sm py-1">
+            </div>
+        </div>
+
         <!-- Hyperparameters -->
         <div id="hyperparams-container" class="flex flex-col gap-4 mt-2 p-4 bg-white/5 rounded-lg">
             <!-- GA -->
@@ -137,6 +160,17 @@
             <!-- GWO -->
             <div id="gwo-params" class="flex flex-col gap-2 hidden">
                 <label class="text-xs text-on-surface-variant">GWO decays 'a' from 2 to 0 automatically.</label>
+            </div>
+            <!-- BCO -->
+            <div id="bco-params" class="flex flex-col gap-4 hidden">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant">Bees (B)</label>
+                    <input id="bco-b" type="number" value="20" class="w-16 input-glass text-center text-sm font-mono text-on-surface rounded-sm py-1">
+                </div>
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant">Cons. Moves (NC)</label>
+                    <input id="bco-nc" type="number" value="5" class="w-16 input-glass text-center text-sm font-mono text-on-surface rounded-sm py-1">
+                </div>
             </div>
         </div>
 
@@ -212,6 +246,8 @@
         setupSync('pop-range', 'pop-input');
         setupSync('iter-range', 'iter-input');
         setupSync('seed-range', 'seed-input');
+        setupSync('ext-freq-range', 'ext-freq-input');
+        setupSync('ext-pct-range', 'ext-pct-input');
 
         // Algorithm Buttons
         let selectedAlgo = 'GA';
@@ -228,10 +264,12 @@
                 document.getElementById('ga-params').classList.add('hidden');
                 document.getElementById('pso-params').classList.add('hidden');
                 document.getElementById('gwo-params').classList.add('hidden');
+                document.getElementById('bco-params').classList.add('hidden');
                 
                 if (selectedAlgo === 'GA') document.getElementById('ga-params').classList.remove('hidden');
                 else if (selectedAlgo === 'PSO') document.getElementById('pso-params').classList.remove('hidden');
                 else if (selectedAlgo === 'GWO') document.getElementById('gwo-params').classList.remove('hidden');
+                else if (selectedAlgo === 'BCO') document.getElementById('bco-params').classList.remove('hidden');
             });
         });
 
@@ -341,6 +379,8 @@
                 
                 // Get Hyperparameters
                 let hyperparams = {};
+                hyperparams.ext_freq = document.getElementById('ext-freq-input').value;
+                hyperparams.ext_percent = document.getElementById('ext-pct-input').value;
                 if (selectedAlgo === 'GA') {
                     hyperparams.pc = document.getElementById('ga-pc').value;
                     hyperparams.pm = document.getElementById('ga-pm').value;
@@ -348,6 +388,9 @@
                     hyperparams.w = document.getElementById('pso-w').value;
                     hyperparams.c1 = document.getElementById('pso-c1').value;
                     hyperparams.c2 = document.getElementById('pso-c2').value;
+                } else if (selectedAlgo === 'BCO') {
+                    hyperparams.b = document.getElementById('bco-b').value;
+                    hyperparams.nc = document.getElementById('bco-nc').value;
                 }
 
                 const results = await window.pywebview.api.run_simulation(popSize, iterations, selectedAlgo, seed, hyperparams);
@@ -363,6 +406,7 @@
                     let color = '#4cd7f6'; // GA (Cyan)
                     if(results.algorithm === 'PSO') color = '#fbabff'; // PSO (Pink)
                     if(results.algorithm === 'GWO') color = '#ae05c6'; // GWO (Purple)
+                    if(results.algorithm === 'BCO') color = '#f59e0b'; // BCO (Amber/Orange)
 
                     const datasetLabel = `${results.algorithm} Fitness`;
                     let existingLineIdx = convergenceChart.data.datasets.findIndex(d => d.label === datasetLabel);
