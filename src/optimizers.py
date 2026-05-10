@@ -11,7 +11,8 @@ class GeneticAlgorithmOptimizer:
                  mutation_rate: float = 0.02,
                  generations: int = 50,
                  ext_freq: int = 0,
-                 ext_percent: float = 0.10):
+                 ext_percent: float = 0.10,
+                 cost_weight: float = 0.5):
         self.jobs = jobs
         self.nodes = nodes
         self.population_size = population_size
@@ -20,6 +21,7 @@ class GeneticAlgorithmOptimizer:
         self.generations = generations
         self.ext_freq = ext_freq
         self.ext_percent = ext_percent
+        self.cost_weight = cost_weight
         self.num_jobs = len(jobs)
         self.num_nodes = len(nodes)
 
@@ -52,7 +54,7 @@ class GeneticAlgorithmOptimizer:
         engine = SimulationEngine(self.jobs, temp_nodes)
         makespan = engine.calculate_makespan()
         cost = engine.calculate_execution_cost()
-        fitness = makespan + (cost * 10) # Using a smaller weight for cost so it doesn't overpower makespan
+        fitness = ((1.0 - self.cost_weight) * makespan) + (self.cost_weight * cost * 10) # Using a smaller weight for cost so it doesn't overpower makespan
         return fitness, makespan, cost
 
     def optimize(self) -> Tuple[Dict[str, List[Job]], float, float, List[float]]:
@@ -116,13 +118,15 @@ class GreyWolfOptimizer:
                  population_size: int = 5,
                  iterations: int = 50,
                  ext_freq: int = 0,
-                 ext_percent: float = 0.10):
+                 ext_percent: float = 0.10,
+                 cost_weight: float = 0.5):
         self.jobs = jobs
         self.nodes = nodes
         self.population_size = population_size
         self.iterations = iterations
         self.ext_freq = ext_freq
         self.ext_percent = ext_percent
+        self.cost_weight = cost_weight
         self.num_jobs = len(jobs)
         self.num_nodes = len(nodes)
         self.index_to_node_id = {i: node.node_id for i, node in enumerate(nodes)}
@@ -147,7 +151,7 @@ class GreyWolfOptimizer:
         engine = SimulationEngine(self.jobs, temp_nodes)
         makespan = engine.calculate_makespan()
         cost = engine.calculate_execution_cost()
-        fitness = makespan + (cost * 10)
+        fitness = ((1.0 - self.cost_weight) * makespan) + (self.cost_weight * cost * 10)
         return fitness, makespan, cost
 
     def optimize(self) -> Tuple[Dict[str, List[Job]], float, float, List[float]]:
@@ -220,7 +224,8 @@ class ParticleSwarmOptimizer:
                  c1: float = 1.5,
                  c2: float = 1.5,
                  ext_freq: int = 0,
-                 ext_percent: float = 0.10):
+                 ext_percent: float = 0.10,
+                 cost_weight: float = 0.5):
         self.jobs = jobs
         self.nodes = nodes
         self.population_size = population_size
@@ -230,6 +235,7 @@ class ParticleSwarmOptimizer:
         self.c2 = c2
         self.ext_freq = ext_freq
         self.ext_percent = ext_percent
+        self.cost_weight = cost_weight
         self.num_jobs = len(jobs)
         self.num_nodes = len(nodes)
         self.index_to_node_id = {i: node.node_id for i, node in enumerate(nodes)}
@@ -251,7 +257,7 @@ class ParticleSwarmOptimizer:
         engine = SimulationEngine(self.jobs, temp_nodes)
         makespan = engine.calculate_makespan()
         cost = engine.calculate_execution_cost()
-        fitness = makespan + (cost * 10)
+        fitness = ((1.0 - self.cost_weight) * makespan) + (self.cost_weight * cost * 10)
         return fitness, makespan, cost
 
     def optimize(self) -> Tuple[Dict[str, List[Job]], float, float, List[float]]:
@@ -312,7 +318,8 @@ class BeeColonyOptimization:
                  iterations: int = 50,
                  nc: int = 5,
                  ext_freq: int = 0,
-                 ext_percent: float = 0.10):
+                 ext_percent: float = 0.10,
+                 cost_weight: float = 0.5):
         self.jobs = jobs
         self.nodes = nodes
         self.population_size = population_size
@@ -320,6 +327,7 @@ class BeeColonyOptimization:
         self.nc = nc
         self.ext_freq = ext_freq
         self.ext_percent = ext_percent
+        self.cost_weight = cost_weight
         self.num_jobs = len(jobs)
         self.num_nodes = len(nodes)
         self.index_to_node_id = {i: node.node_id for i, node in enumerate(nodes)}
@@ -341,7 +349,7 @@ class BeeColonyOptimization:
         engine = SimulationEngine(self.jobs, temp_nodes)
         makespan = engine.calculate_makespan()
         cost = engine.calculate_execution_cost()
-        fitness = makespan + (cost * 10)
+        fitness = ((1.0 - self.cost_weight) * makespan) + (self.cost_weight * cost * 10)
         return fitness, makespan, cost
 
     def _partial_evaluate(self, path: List[int]) -> float:
@@ -453,3 +461,110 @@ class BeeColonyOptimization:
                 best_cost = cst
                 
         return self._chromosome_to_assignments(best_chromosome), best_makespan, best_cost, history
+
+import numpy as np
+
+class WhaleOptimizationOptimizer:
+    def __init__(self, jobs: List[Job], nodes: List[Node],
+                 population_size: int = 20,
+                 iterations: int = 50,
+                 b: float = 1.0,
+                 a_step: float = None,
+                 ext_freq: int = 0,
+                 ext_percent: float = 0.10,
+                 cost_weight: float = 0.5):
+        self.jobs = jobs
+        self.nodes = nodes
+        self.population_size = population_size
+        self.iterations = iterations
+        self.b = b
+        self.a_step = a_step if a_step is not None else (2.0 / iterations)
+        self.a = 2.0
+        self.ext_freq = ext_freq
+        self.ext_percent = ext_percent
+        self.cost_weight = cost_weight
+        self.num_jobs = len(jobs)
+        self.num_nodes = len(nodes)
+        self.index_to_node_id = {i: node.node_id for i, node in enumerate(nodes)}
+
+    def _chromosome_to_assignments(self, positions: np.ndarray) -> Dict[str, List[Job]]:
+        assignments: Dict[str, List[Job]] = {node.node_id: [] for node in self.nodes}
+        for job_index, pos in enumerate(positions):
+            node_index = int(round(pos))
+            node_index = max(0, min(node_index, self.num_nodes - 1))
+            job = self.jobs[job_index]
+            node_id = self.index_to_node_id[node_index]
+            assignments[node_id].append(job)
+        return assignments
+
+    def _evaluate(self, positions: np.ndarray) -> Tuple[float, float, float]:
+        temp_nodes = [Node(n.node_id, n.capacity_cu, n.price_per_hour) for n in self.nodes]
+        assignments = self._chromosome_to_assignments(positions)
+        for node in temp_nodes: node.assigned_jobs = assignments.get(node.node_id, [])
+        engine = SimulationEngine(self.jobs, temp_nodes)
+        makespan = engine.calculate_makespan()
+        cost = engine.calculate_execution_cost()
+        fitness = ((1.0 - self.cost_weight) * makespan) + (self.cost_weight * cost * 10)
+        return fitness, makespan, cost
+
+    def optimize(self) -> Tuple[Dict[str, List[Job]], float, float, List[float]]:
+        # Initialize solutions uniformly randomly in space [0, num_nodes - 1]
+        sols = np.random.uniform(0.0, float(self.num_nodes - 1), size=(self.population_size, self.num_jobs))
+        
+        best_fitness = float('inf')
+        best_sol = None
+        best_makespan = 0.0
+        best_cost = 0.0
+        history = []
+
+        for t in range(self.iterations):
+            current_fitnesses = []
+            for i in range(self.population_size):
+                fit, ms, cst = self._evaluate(sols[i])
+                current_fitnesses.append(fit)
+                if fit < best_fitness:
+                    best_fitness = fit
+                    best_sol = sols[i].copy()
+                    best_makespan = ms
+                    best_cost = cst
+            
+            history.append(best_fitness)
+            
+            # Diversity Extension Mechanism
+            if self.ext_freq > 0 and (t + 1) % self.ext_freq == 0:
+                num_replace = int(self.population_size * self.ext_percent)
+                if num_replace > 0:
+                    sorted_indices = np.argsort(current_fitnesses)[::-1] # descending
+                    for idx in sorted_indices[:num_replace]:
+                        sols[idx] = np.random.uniform(0.0, float(self.num_nodes - 1), size=self.num_jobs)
+
+            new_sols = []
+            for i in range(self.population_size):
+                s = sols[i]
+                if np.random.uniform(0.0, 1.0) > 0.5:
+                    r = np.random.uniform(0.0, 1.0, size=self.num_jobs)
+                    A = (2.0 * np.multiply(self.a, r)) - self.a
+                    norm_A = np.linalg.norm(A)
+                    if norm_A < 1.0:
+                        C = 2.0 * np.random.uniform(0.0, 1.0, size=self.num_jobs)
+                        D = np.linalg.norm(np.multiply(C, best_sol) - s)
+                        new_s = best_sol - np.multiply(A, D)
+                    else:
+                        random_sol = sols[np.random.randint(self.population_size)]
+                        C = 2.0 * np.random.uniform(0.0, 1.0, size=self.num_jobs)
+                        D = np.linalg.norm(np.multiply(C, random_sol) - s)
+                        new_s = random_sol - np.multiply(A, D)
+                else:
+                    D = np.linalg.norm(best_sol - s)
+                    L = np.random.uniform(-1.0, 1.0, size=self.num_jobs)
+                    new_s = np.multiply(np.multiply(D, np.exp(self.b * L)), np.cos(2.0 * np.pi * L)) + best_sol
+                
+                # Constrain solution
+                new_s = np.clip(new_s, 0.0, float(self.num_nodes - 1))
+                new_sols.append(new_s)
+
+            sols = np.stack(new_sols)
+            self.a -= self.a_step
+
+        assignments = self._chromosome_to_assignments(best_sol)
+        return assignments, best_makespan, best_cost, history

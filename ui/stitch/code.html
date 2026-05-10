@@ -68,9 +68,12 @@
             <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant">Algorithm</label>
             <div class="flex p-1 bg-surface-container-highest rounded-full border border-outline-variant/30" id="algo-group">
                 <button class="algo-btn flex-1 py-1 rounded-full bg-primary text-black text-xs font-bold shadow-sm">GA</button>
-                <button class="algo-btn flex-1 py-1 rounded-full text-on-surface-variant hover:text-white text-xs font-bold transition-colors">PSO</button>
-                <button class="algo-btn flex-1 py-1 rounded-full text-on-surface-variant hover:text-white text-xs font-bold transition-colors">GWO</button>
-                <button class="algo-btn flex-1 py-1 rounded-full text-on-surface-variant hover:text-white text-xs font-bold transition-colors">BCO</button>
+                <button class="algo-btn flex-1 py-1 rounded-full bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">PSO</button>
+                <button class="algo-btn flex-1 py-1 rounded-full bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">GWO</button>
+                <button class="algo-btn flex-1 py-1 rounded-full bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">BCO</button>
+                <button class="algo-btn flex-1 py-1 rounded-full bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">WOA</button>
+                <button class="algo-btn flex-1 py-1 rounded-full bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">RR</button>
+                <button class="algo-btn flex-1 py-1 rounded-full bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">SJF</button>
             </div>
         </div>
 
@@ -108,6 +111,17 @@
         </div>
 
         
+        <!-- Cost Weight -->
+        <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant flex justify-between">
+                Cost Weight
+            </label>
+            <div class="flex items-center gap-2">
+                <input id="weight-range" type="range" min="0.0" max="1.0" step="0.05" value="0.5" class="w-full h-1 bg-surface-container-highest rounded-full appearance-none cursor-pointer accent-primary">
+                <input id="weight-input" type="number" step="0.05" value="0.5" class="w-16 input-glass text-center text-sm font-mono text-on-surface rounded-sm py-1">
+            </div>
+        </div>
+
         <!-- Diversity Extension -->
         <div class="flex flex-col gap-2">
             <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant flex justify-between">
@@ -172,6 +186,13 @@
                     <input id="bco-nc" type="number" value="5" class="w-16 input-glass text-center text-sm font-mono text-on-surface rounded-sm py-1">
                 </div>
             </div>
+            <!-- WOA -->
+            <div id="woa-params" class="flex flex-col gap-4 hidden">
+                <div class="flex items-center justify-between">
+                    <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant">Spiral Shape (b)</label>
+                    <input id="woa-b" type="number" step="0.1" value="1.0" class="w-16 input-glass text-center text-sm font-mono text-on-surface rounded-sm py-1">
+                </div>
+            </div>
         </div>
 
         <button id="run-btn" class="w-full py-4 rounded-lg bg-gradient-to-r from-primary to-secondary text-black text-sm font-bold hover:opacity-90 transition-all shadow-[0_0_15px_rgba(76,215,246,0.3)]">
@@ -188,7 +209,12 @@
         <div class="glass-panel rounded-xl p-6 flex flex-col relative h-full">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-lg font-bold text-on-surface">Fitness Score vs. Generation</h2>
-                <span class="material-symbols-outlined text-on-surface-variant">show_chart</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleFullscreen(this.closest('.glass-panel'))" class="text-primary hover:text-secondary transition-colors">
+                        <span class="material-symbols-outlined fullscreen-icon">fullscreen</span>
+                    </button>
+                    <span class="material-symbols-outlined text-on-surface-variant">show_chart</span>
+                </div>
             </div>
             <div class="flex-1 relative w-full h-full">
                 <canvas id="convergenceChart"></canvas>
@@ -199,7 +225,12 @@
         <div class="glass-panel rounded-xl p-6 flex flex-col relative h-full">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-lg font-bold text-on-surface">Makespan vs. Execution Cost</h2>
-                <span class="material-symbols-outlined text-on-surface-variant">bar_chart</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleFullscreen(this.closest('.glass-panel'))" class="text-primary hover:text-secondary transition-colors">
+                        <span class="material-symbols-outlined fullscreen-icon">fullscreen</span>
+                    </button>
+                    <span class="material-symbols-outlined text-on-surface-variant">bar_chart</span>
+                </div>
             </div>
             <div class="flex-1 relative w-full h-full">
                 <canvas id="barChart"></canvas>
@@ -235,6 +266,27 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
+        window.toggleFullscreen = (element) => {
+            if (element.classList.contains('fixed')) {
+                
+                element.classList.remove('fixed', 'inset-0', 'z-[100]', 'bg-[#0e1416]');
+                element.style.height = '';
+                element.style.width = '';
+                element.classList.add('relative');
+
+                element.querySelector('.fullscreen-icon').textContent = 'fullscreen';
+            } else {
+                
+                element.classList.remove('relative');
+                element.classList.add('fixed', 'inset-0', 'z-[100]', 'bg-[#0e1416]');
+                element.style.height = '100vh';
+                element.style.width = '100vw';
+
+                element.querySelector('.fullscreen-icon').textContent = 'fullscreen_exit';
+            }
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+        };
+
         
         // Sync Range and Input fields
         const setupSync = (rangeId, inputId) => {
@@ -247,6 +299,7 @@
         setupSync('iter-range', 'iter-input');
         setupSync('seed-range', 'seed-input');
         setupSync('ext-freq-range', 'ext-freq-input');
+        setupSync('weight-range', 'weight-input');
         setupSync('ext-pct-range', 'ext-pct-input');
 
         // Algorithm Buttons
@@ -255,7 +308,7 @@
         algoBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 algoBtns.forEach(b => {
-                    b.className = 'algo-btn flex-1 py-1 rounded-full text-on-surface-variant hover:text-white text-xs font-bold transition-colors';
+                    b.className = 'algo-btn flex-1 py-1 rounded-full bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors';
                 });
                 e.target.className = 'algo-btn flex-1 py-1 rounded-full bg-primary text-black text-xs font-bold shadow-sm';
                 selectedAlgo = e.target.textContent.trim();
@@ -265,11 +318,13 @@
                 document.getElementById('pso-params').classList.add('hidden');
                 document.getElementById('gwo-params').classList.add('hidden');
                 document.getElementById('bco-params').classList.add('hidden');
+                document.getElementById('woa-params').classList.add('hidden');
                 
                 if (selectedAlgo === 'GA') document.getElementById('ga-params').classList.remove('hidden');
                 else if (selectedAlgo === 'PSO') document.getElementById('pso-params').classList.remove('hidden');
                 else if (selectedAlgo === 'GWO') document.getElementById('gwo-params').classList.remove('hidden');
                 else if (selectedAlgo === 'BCO') document.getElementById('bco-params').classList.remove('hidden');
+                else if (selectedAlgo === 'WOA') document.getElementById('woa-params').classList.remove('hidden');
             });
         });
 
@@ -295,14 +350,13 @@
         const ctxBar = document.getElementById('barChart').getContext('2d');
         const barChart = new Chart(ctxBar, {
             type: 'bar',
-            data: { labels: [], datasets: [] },
+            data: { labels: ['Makespan', 'Cost (x10)'], datasets: [] },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { legend: { display: true, position: 'bottom' } },
                 scales: {
-                    y: { type: 'linear', display: true, position: 'left', grid: { color: 'rgba(255,255,255,0.05)' }, title: {display: true, text: "Makespan"} },
-                    y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: {display: true, text: "Cost"} }
+                    y: { type: 'linear', display: true, position: 'left', grid: { color: 'rgba(255,255,255,0.05)' }, title: {display: true, text: "Value"} }
                 }
             }
         });
@@ -323,7 +377,7 @@
                             <input id="price-${node.id}" type="number" step="0.001" value="${node.price}" class="w-24 input-glass text-right text-sm font-mono text-on-surface rounded-sm py-1" onchange="updateNode('${node.id}')">
                         </td>
                         <td class="py-2 px-2 text-center">
-                            <button onclick="deleteNode('${node.id}')" class="text-on-surface-variant hover:text-error transition-colors p-2">
+                            <button onclick="deleteNode('${node.id}')" class="text-error hover:text-red-500 transition-colors p-2">
                                 <span class="material-symbols-outlined text-[18px]">delete</span>
                             </button>
                         </td>
@@ -380,6 +434,7 @@
                 // Get Hyperparameters
                 let hyperparams = {};
                 hyperparams.ext_freq = document.getElementById('ext-freq-input').value;
+                hyperparams.cost_weight = document.getElementById('weight-input').value;
                 hyperparams.ext_percent = document.getElementById('ext-pct-input').value;
                 if (selectedAlgo === 'GA') {
                     hyperparams.pc = document.getElementById('ga-pc').value;
@@ -391,6 +446,8 @@
                 } else if (selectedAlgo === 'BCO') {
                     hyperparams.b = document.getElementById('bco-b').value;
                     hyperparams.nc = document.getElementById('bco-nc').value;
+                } else if (selectedAlgo === 'WOA') {
+                    hyperparams.woa_b = document.getElementById('woa-b').value;
                 }
 
                 const results = await window.pywebview.api.run_simulation(popSize, iterations, selectedAlgo, seed, hyperparams);
@@ -407,6 +464,9 @@
                     if(results.algorithm === 'PSO') color = '#fbabff'; // PSO (Pink)
                     if(results.algorithm === 'GWO') color = '#ae05c6'; // GWO (Purple)
                     if(results.algorithm === 'BCO') color = '#f59e0b'; // BCO (Amber/Orange)
+                    if(results.algorithm === 'WOA') color = '#3b82f6'; // WOA (Blue)
+                    if(results.algorithm === 'RR') color = '#10b981'; // RR (Emerald)
+                    if(results.algorithm === 'SJF') color = '#ef4444'; // SJF (Red)
 
                     const datasetLabel = `${results.algorithm} Fitness`;
                     let existingLineIdx = convergenceChart.data.datasets.findIndex(d => d.label === datasetLabel);
@@ -427,20 +487,16 @@
                     convergenceChart.update();
 
                     // Update Bar Chart (Makespan vs Cost) Accumulatively
-                    let existingBarIdx = barChart.data.labels.indexOf(results.algorithm);
-                    
-                    if (barChart.data.datasets.length === 0) {
-                         barChart.data.datasets.push({ label: 'Makespan', data: [], backgroundColor: '#4cd7f6', yAxisID: 'y' });
-                         barChart.data.datasets.push({ label: 'Execution Cost ($)', data: [], backgroundColor: '#fbabff', yAxisID: 'y1' });
-                    }
-
+                    let existingBarIdx = barChart.data.datasets.findIndex(d => d.label === results.algorithm);
                     if (existingBarIdx !== -1) {
-                        barChart.data.datasets[0].data[existingBarIdx] = results.makespan;
-                        barChart.data.datasets[1].data[existingBarIdx] = results.cost;
+                        barChart.data.datasets[existingBarIdx].data = [results.makespan, results.cost * 10];
                     } else {
-                        barChart.data.labels.push(results.algorithm);
-                        barChart.data.datasets[0].data.push(results.makespan);
-                        barChart.data.datasets[1].data.push(results.cost);
+                        barChart.data.datasets.push({
+                            label: results.algorithm,
+                            data: [results.makespan, results.cost * 10],
+                            backgroundColor: color,
+                            borderRadius: 4
+                        });
                     }
                     barChart.update();
                 }

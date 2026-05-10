@@ -4,8 +4,10 @@ import json
 import random
 import threading
 from src.data_loader import generate_nodes
-from src.optimizers import GeneticAlgorithmOptimizer, GreyWolfOptimizer, ParticleSwarmOptimizer, BeeColonyOptimization
+from src.optimizers import GeneticAlgorithmOptimizer, GreyWolfOptimizer, ParticleSwarmOptimizer, BeeColonyOptimization, WhaleOptimizationOptimizer
 from src.models import Job
+from src.baselines import round_robin_scheduler, shortest_job_first_scheduler
+from src.engine import SimulationEngine
 
 class Api:
     def __init__(self):
@@ -65,27 +67,46 @@ class Api:
         try:
             ext_freq = int(hyperparams.get("ext_freq", 0))
             ext_percent = float(hyperparams.get("ext_percent", 0.10))
+            cost_weight = float(hyperparams.get("cost_weight", 0.5))
             
             if algorithm == "GA":
                 pc = float(hyperparams.get("pc", 0.95))
                 pm = float(hyperparams.get("pm", 0.02))
-                optimizer = GeneticAlgorithmOptimizer(self.jobs, self.nodes, population_size=pop_size, generations=iterations, crossover_rate=pc, mutation_rate=pm, ext_freq=ext_freq, ext_percent=ext_percent)
+                optimizer = GeneticAlgorithmOptimizer(self.jobs, self.nodes, population_size=pop_size, generations=iterations, crossover_rate=pc, mutation_rate=pm, ext_freq=ext_freq, ext_percent=ext_percent, cost_weight=cost_weight)
                 assignments, makespan, cost, history = optimizer.optimize()
             elif algorithm == "PSO":
                 w = float(hyperparams.get("w", 0.7))
                 c1 = float(hyperparams.get("c1", 1.5))
                 c2 = float(hyperparams.get("c2", 1.5))
-                optimizer = ParticleSwarmOptimizer(self.jobs, self.nodes, population_size=pop_size, iterations=iterations, inertia_weight=w, c1=c1, c2=c2, ext_freq=ext_freq, ext_percent=ext_percent)
+                optimizer = ParticleSwarmOptimizer(self.jobs, self.nodes, population_size=pop_size, iterations=iterations, inertia_weight=w, c1=c1, c2=c2, ext_freq=ext_freq, ext_percent=ext_percent, cost_weight=cost_weight)
                 assignments, makespan, cost, history = optimizer.optimize()
             elif algorithm == "GWO":
-                optimizer = GreyWolfOptimizer(self.jobs, self.nodes, population_size=pop_size, iterations=iterations, ext_freq=ext_freq, ext_percent=ext_percent)
+                optimizer = GreyWolfOptimizer(self.jobs, self.nodes, population_size=pop_size, iterations=iterations, ext_freq=ext_freq, ext_percent=ext_percent, cost_weight=cost_weight)
                 assignments, makespan, cost, history = optimizer.optimize()
             elif algorithm == "BCO":
                 b = int(hyperparams.get("b", 20))
                 nc = int(hyperparams.get("nc", 5))
                 # population_size is mapped to B for BCO.
-                optimizer = BeeColonyOptimization(self.jobs, self.nodes, population_size=b, iterations=iterations, nc=nc, ext_freq=ext_freq, ext_percent=ext_percent)
+                optimizer = BeeColonyOptimization(self.jobs, self.nodes, population_size=b, iterations=iterations, nc=nc, ext_freq=ext_freq, ext_percent=ext_percent, cost_weight=cost_weight)
                 assignments, makespan, cost, history = optimizer.optimize()
+            elif algorithm == "WOA":
+                b_val = float(hyperparams.get("woa_b", 1.0))
+                optimizer = WhaleOptimizationOptimizer(self.jobs, self.nodes, population_size=pop_size, iterations=iterations, b=b_val, ext_freq=ext_freq, ext_percent=ext_percent, cost_weight=cost_weight)
+                assignments, makespan, cost, history = optimizer.optimize()
+            elif algorithm == "RR":
+                assignments = round_robin_scheduler(self.jobs, self.nodes)
+                engine = SimulationEngine(self.jobs, self.nodes)
+                for node in self.nodes: node.assigned_jobs = assignments.get(node.node_id, [])
+                makespan = engine.calculate_makespan()
+                cost = engine.calculate_execution_cost()
+                history = [((1.0 - cost_weight) * makespan) + (cost_weight * cost * 10)] * iterations
+            elif algorithm == "SJF":
+                assignments = shortest_job_first_scheduler(self.jobs, self.nodes)
+                engine = SimulationEngine(self.jobs, self.nodes)
+                for node in self.nodes: node.assigned_jobs = assignments.get(node.node_id, [])
+                makespan = engine.calculate_makespan()
+                cost = engine.calculate_execution_cost()
+                history = [((1.0 - cost_weight) * makespan) + (cost_weight * cost * 10)] * iterations
             else:
                 raise ValueError("Unknown algorithm")
 
