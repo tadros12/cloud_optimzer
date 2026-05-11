@@ -1,6 +1,6 @@
 import random
 import math
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Any
 from .models import Job, Node
 from .engine import SimulationEngine
 
@@ -57,8 +57,11 @@ class GeneticAlgorithmOptimizer:
         fitness = ((1.0 - self.cost_weight) * makespan) + (self.cost_weight * cost * 10) # Using a smaller weight for cost so it doesn't overpower makespan
         return fitness, makespan, cost
 
-    def optimize(self) -> Tuple[Dict[str, List[Job]], float, float, List[float]]:
-        population = self._initialize_population()
+    def optimize(self, initial_population=None) -> Tuple[Dict[str, List[Job]], float, float, List[float], List[List[Any]]]:
+        if initial_population is not None:
+            population = [[int(round(x)) for x in p] for p in initial_population]
+        else:
+            population = self._initialize_population()
         best_chromosome = None
         best_fitness = float('inf')
         best_makespan = 0.0
@@ -111,7 +114,7 @@ class GeneticAlgorithmOptimizer:
             population = new_population[:self.population_size]
 
         assignments = self._chromosome_to_assignments(best_chromosome)
-        return assignments, best_makespan, best_cost, history
+        return assignments, best_makespan, best_cost, history, population
 
 class GreyWolfOptimizer:
     def __init__(self, jobs: List[Job], nodes: List[Node],
@@ -154,11 +157,14 @@ class GreyWolfOptimizer:
         fitness = ((1.0 - self.cost_weight) * makespan) + (self.cost_weight * cost * 10)
         return fitness, makespan, cost
 
-    def optimize(self) -> Tuple[Dict[str, List[Job]], float, float, List[float]]:
-        population = []
-        for _ in range(self.population_size):
-            pos = [random.uniform(0, self.num_nodes - 1) for _ in range(self.num_jobs)]
-            population.append(pos)
+    def optimize(self, initial_population=None) -> Tuple[Dict[str, List[Job]], float, float, List[float], List[List[Any]]]:
+        if initial_population is not None:
+            population = [[float(x) for x in p] for p in initial_population]
+        else:
+            population = []
+            for _ in range(self.population_size):
+                pos = [random.uniform(0, self.num_nodes - 1) for _ in range(self.num_jobs)]
+                population.append(pos)
 
         alpha_pos, alpha_score = None, float("inf")
         beta_pos, beta_score = None, float("inf")
@@ -214,7 +220,7 @@ class GreyWolfOptimizer:
                     population[i][j] = max(0.0, min(population[i][j], float(self.num_nodes - 1)))
 
         assignments = self._chromosome_to_assignments(alpha_pos)
-        return assignments, best_makespan, best_cost, history
+        return assignments, best_makespan, best_cost, history, population
 
 class ParticleSwarmOptimizer:
     def __init__(self, jobs: List[Job], nodes: List[Node],
@@ -260,9 +266,11 @@ class ParticleSwarmOptimizer:
         fitness = ((1.0 - self.cost_weight) * makespan) + (self.cost_weight * cost * 10)
         return fitness, makespan, cost
 
-    def optimize(self) -> Tuple[Dict[str, List[Job]], float, float, List[float]]:
-        # Initialize particles
-        particles = [[random.uniform(0, self.num_nodes - 1) for _ in range(self.num_jobs)] for _ in range(self.population_size)]
+    def optimize(self, initial_population=None) -> Tuple[Dict[str, List[Job]], float, float, List[float], List[List[Any]]]:
+        if initial_population is not None:
+            particles = [[float(x) for x in p] for p in initial_population]
+        else:
+            particles = [[random.uniform(0, self.num_nodes - 1) for _ in range(self.num_jobs)] for _ in range(self.population_size)]
         velocities = [[random.uniform(-1, 1) for _ in range(self.num_jobs)] for _ in range(self.population_size)]
         pbest = particles.copy()
         pbest_scores = [float('inf')] * self.population_size
@@ -310,7 +318,7 @@ class ParticleSwarmOptimizer:
                     particles[i][j] = max(0.0, min(particles[i][j], float(self.num_nodes - 1)))
 
         assignments = self._chromosome_to_assignments(gbest)
-        return assignments, gbest_makespan, gbest_cost, history
+        return assignments, gbest_makespan, gbest_cost, history, particles
 
 class BeeColonyOptimization:
     def __init__(self, jobs: List[Job], nodes: List[Node],
@@ -356,15 +364,21 @@ class BeeColonyOptimization:
         padded = list(path) + [random.randint(0, self.num_nodes - 1) for _ in range(self.num_jobs - len(path))]
         return self._evaluate(padded)[0]
 
-    def optimize(self) -> Tuple[Dict[str, List[Job]], float, float, List[float]]:
-        bees = [[] for _ in range(self.population_size)]
+    def optimize(self, initial_population=None) -> Tuple[Dict[str, List[Job]], float, float, List[float], List[List[Any]]]:
+        if initial_population is not None:
+            bees = [[int(round(x)) for x in p] for p in initial_population]
+        else:
+            bees = [[] for _ in range(self.population_size)]
         history = []
         
         t = 0
         while t < self.iterations:
             all_assigned = all(len(bee) == self.num_jobs for bee in bees)
             if all_assigned:
-                break
+                for bee in bees:
+                    drop_count = min(self.nc, max(1, self.num_jobs // 3))
+                    for _ in range(drop_count):
+                        if bee: bee.pop(random.randrange(len(bee)))
                 
             # Forward pass
             for i in range(self.population_size):
@@ -450,17 +464,21 @@ class BeeColonyOptimization:
         best_makespan = 0.0
         best_cost = 0.0
         
+        final_pop = []
         for bee in bees:
             if len(bee) < self.num_jobs:
-                bee = bee + [random.randint(0, self.num_nodes - 1) for _ in range(self.num_jobs - len(bee))]
-            fit, ms, cst = self._evaluate(bee)
+                b = bee + [random.randint(0, self.num_nodes - 1) for _ in range(self.num_jobs - len(bee))]
+            else:
+                b = bee.copy()
+            final_pop.append(b)
+            fit, ms, cst = self._evaluate(b)
             if fit < best_fitness:
                 best_fitness = fit
-                best_chromosome = bee
+                best_chromosome = b
                 best_makespan = ms
                 best_cost = cst
                 
-        return self._chromosome_to_assignments(best_chromosome), best_makespan, best_cost, history
+        return self._chromosome_to_assignments(best_chromosome), best_makespan, best_cost, history, final_pop
 
 import numpy as np
 
@@ -507,9 +525,11 @@ class WhaleOptimizationOptimizer:
         fitness = ((1.0 - self.cost_weight) * makespan) + (self.cost_weight * cost * 10)
         return fitness, makespan, cost
 
-    def optimize(self) -> Tuple[Dict[str, List[Job]], float, float, List[float]]:
-        # Initialize solutions uniformly randomly in space [0, num_nodes - 1]
-        sols = np.random.uniform(0.0, float(self.num_nodes - 1), size=(self.population_size, self.num_jobs))
+    def optimize(self, initial_population=None) -> Tuple[Dict[str, List[Job]], float, float, List[float], List[List[Any]]]:
+        if initial_population is not None:
+            sols = np.array(initial_population, dtype=float)
+        else:
+            sols = np.random.uniform(0.0, float(self.num_nodes - 1), size=(self.population_size, self.num_jobs))
         
         best_fitness = float('inf')
         best_sol = None
@@ -567,4 +587,4 @@ class WhaleOptimizationOptimizer:
             self.a -= self.a_step
 
         assignments = self._chromosome_to_assignments(best_sol)
-        return assignments, best_makespan, best_cost, history
+        return assignments, best_makespan, best_cost, history, sols.tolist()

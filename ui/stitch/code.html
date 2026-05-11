@@ -66,7 +66,47 @@
     <!-- Controls -->
     <div class="p-6 border-t border-outline-variant/20 flex flex-col gap-6 flex-shrink-0">
         
-        <!-- Algorithm Selection -->
+                <!-- Mode Selection -->
+        <div class="flex flex-col gap-2">
+            <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant">Execution Mode</label>
+            <div class="flex p-1 bg-surface-container-highest rounded-full border border-outline-variant/30" id="mode-group">
+                <button id="mode-single" class="mode-btn flex-1 py-1 rounded-full bg-primary text-black text-xs font-bold shadow-sm active-mode">Single</button>
+                <button id="mode-hybrid" class="mode-btn flex-1 py-1 rounded-full text-on-surface-variant hover:text-white text-xs font-bold transition-colors">Hybrid</button>
+            </div>
+        </div>
+
+        
+        <!-- PHASE 1 CONFIG -->
+        <div class="flex flex-col gap-4">
+            <h3 class="text-sm font-bold text-primary">Phase 1 / Single: Algorithm</h3>
+            <select id="algo1-select" class="bg-surface-container-highest border border-outline-variant/30 rounded-lg text-sm p-2 text-on-surface focus:outline-none focus:border-primary">
+                <option value="GA">Genetic Algorithm (GA)</option>
+                <option value="PSO">Particle Swarm (PSO)</option>
+                <option value="GWO">Grey Wolf (GWO)</option>
+                <option value="BCO">Bee Colony (BCO)</option>
+                <option value="WOA">Whale Optimization (WOA)</option>
+            </select>
+        </div>
+
+        <!-- PHASE 2 CONFIG (Hidden by default) -->
+        <div id="phase2-section" class="flex flex-col gap-4 hidden border-t border-outline-variant/20 pt-4">
+            <h3 class="text-sm font-bold text-secondary">Phase 2: Local Refinement</h3>
+            <select id="algo2-select" class="bg-surface-container-highest border border-outline-variant/30 rounded-lg text-sm p-2 text-on-surface focus:outline-none focus:border-secondary">
+                <option value="PSO">Particle Swarm (PSO)</option>
+                <option value="GA">Genetic Algorithm (GA)</option>
+                <option value="GWO">Grey Wolf (GWO)</option>
+                <option value="BCO">Bee Colony (BCO)</option>
+                <option value="WOA">Whale Optimization (WOA)</option>
+            </select>
+            
+            <div class="flex items-center justify-between">
+                <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant">Phase 2 Iterations</label>
+                <input id="iter2-input" type="number" value="50" class="w-16 input-glass text-center text-sm font-mono text-on-surface rounded-sm py-1">
+            </div>
+        </div>
+
+        <!-- Old Algorithm Selection (Hidden) -->
+        <div class="hidden">
         <div class="flex flex-col gap-2">
             <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant">Algorithm</label>
             <div class="flex flex-wrap gap-1 p-1 bg-surface-container-highest rounded-xl border border-outline-variant/30" id="algo-group">
@@ -80,6 +120,7 @@
             </div>
         </div>
 
+        </div>
         <!-- Population Size -->
         <div class="flex flex-col gap-2">
             <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant flex justify-between">
@@ -338,6 +379,29 @@
             }
         };
 
+                let currentMode = 'Single';
+        const modeSingle = document.getElementById('mode-single');
+        const modeHybrid = document.getElementById('mode-hybrid');
+        const phase2Section = document.getElementById('phase2-section');
+
+        if(modeSingle && modeHybrid) {
+            const setMode = (mode) => {
+                currentMode = mode;
+                if(mode === 'Single') {
+                    modeSingle.className = 'mode-btn flex-1 py-1 rounded-full bg-primary text-black text-xs font-bold shadow-sm active-mode';
+                    modeHybrid.className = 'mode-btn flex-1 py-1 rounded-full text-on-surface-variant hover:text-white text-xs font-bold transition-colors';
+                    phase2Section.classList.add('hidden');
+                } else {
+                    modeHybrid.className = 'mode-btn flex-1 py-1 rounded-full bg-primary text-black text-xs font-bold shadow-sm active-mode';
+                    modeSingle.className = 'mode-btn flex-1 py-1 rounded-full text-on-surface-variant hover:text-white text-xs font-bold transition-colors';
+                    phase2Section.classList.remove('hidden');
+                }
+                if (window.updateVisibleParams) window.updateVisibleParams();
+            };
+            modeSingle.addEventListener('click', () => setMode('Single'));
+            modeHybrid.addEventListener('click', () => setMode('Hybrid'));
+        }
+
         window.switchTab = (tab) => {
             document.getElementById('view-control').classList.add('hidden');
             document.getElementById('view-assign').classList.add('hidden');
@@ -397,31 +461,43 @@
         setupSync('weight-range', 'weight-input');
         setupSync('ext-pct-range', 'ext-pct-input');
 
-        // Algorithm Buttons
+        // Algorithm Selectors
         let selectedAlgo = 'GA';
-        const algoBtns = document.querySelectorAll('.algo-btn');
-        algoBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                algoBtns.forEach(b => {
-                    b.className = 'algo-btn flex-1 min-w-[30%] py-2 rounded-lg bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors';
+        const algo1Select = document.getElementById('algo1-select');
+        const algo2Select = document.getElementById('algo2-select');
+        
+        window.updateVisibleParams = () => {
+            document.getElementById('ga-params').classList.add('hidden');
+            document.getElementById('pso-params').classList.add('hidden');
+            document.getElementById('gwo-params').classList.add('hidden');
+            document.getElementById('bco-params').classList.add('hidden');
+            document.getElementById('woa-params').classList.add('hidden');
+            
+            const showParams = (algo) => {
+                if (algo === 'GA') document.getElementById('ga-params').classList.remove('hidden');
+                if (algo === 'PSO') document.getElementById('pso-params').classList.remove('hidden');
+                if (algo === 'GWO') document.getElementById('gwo-params').classList.remove('hidden');
+                if (algo === 'BCO') document.getElementById('bco-params').classList.remove('hidden');
+                if (algo === 'WOA') document.getElementById('woa-params').classList.remove('hidden');
+            };
+            
+            if (algo1Select) showParams(algo1Select.value);
+            
+            if (currentMode === 'Hybrid' && algo2Select) {
+                // Disable algo1 value in algo2
+                Array.from(algo2Select.options).forEach(opt => {
+                    opt.disabled = (opt.value === algo1Select.value);
                 });
-                e.target.className = 'algo-btn flex-1 min-w-[30%] py-2 rounded-lg bg-primary text-black text-xs font-bold shadow-sm';
-                selectedAlgo = e.target.textContent.trim();
-                
-                // Toggle hyperparams visibility
-                document.getElementById('ga-params').classList.add('hidden');
-                document.getElementById('pso-params').classList.add('hidden');
-                document.getElementById('gwo-params').classList.add('hidden');
-                document.getElementById('bco-params').classList.add('hidden');
-                document.getElementById('woa-params').classList.add('hidden');
-                
-                if (selectedAlgo === 'GA') document.getElementById('ga-params').classList.remove('hidden');
-                else if (selectedAlgo === 'PSO') document.getElementById('pso-params').classList.remove('hidden');
-                else if (selectedAlgo === 'GWO') document.getElementById('gwo-params').classList.remove('hidden');
-                else if (selectedAlgo === 'BCO') document.getElementById('bco-params').classList.remove('hidden');
-                else if (selectedAlgo === 'WOA') document.getElementById('woa-params').classList.remove('hidden');
-            });
-        });
+                if (algo2Select.value === algo1Select.value) {
+                    algo2Select.value = Array.from(algo2Select.options).find(opt => !opt.disabled).value;
+                }
+                showParams(algo2Select.value);
+            }
+        };
+
+        if (algo1Select) algo1Select.addEventListener('change', window.updateVisibleParams);
+        if (algo2Select) algo2Select.addEventListener('change', window.updateVisibleParams);
+        setTimeout(window.updateVisibleParams, 100);
 
         // Setup Chart.js
         Chart.defaults.color = '#bcc9cd';
@@ -526,26 +602,38 @@
                 const iterations = document.getElementById('iter-input').value;
                 const seed = document.getElementById('seed-input').value;
                 
-                // Get Hyperparameters
+                const algo1 = document.getElementById('algo1-select') ? document.getElementById('algo1-select').value : selectedAlgo;
+                const algo2 = document.getElementById('algo2-select') ? document.getElementById('algo2-select').value : 'PSO';
+                const iter2 = document.getElementById('iter2-input') ? document.getElementById('iter2-input').value : 50;
+
                 let hyperparams = {};
                 hyperparams.ext_freq = document.getElementById('ext-freq-input').value;
                 hyperparams.cost_weight = document.getElementById('weight-input').value;
                 hyperparams.ext_percent = document.getElementById('ext-pct-input').value;
-                if (selectedAlgo === 'GA') {
-                    hyperparams.pc = document.getElementById('ga-pc').value;
-                    hyperparams.pm = document.getElementById('ga-pm').value;
-                } else if (selectedAlgo === 'PSO') {
-                    hyperparams.w = document.getElementById('pso-w').value;
-                    hyperparams.c1 = document.getElementById('pso-c1').value;
-                    hyperparams.c2 = document.getElementById('pso-c2').value;
-                } else if (selectedAlgo === 'BCO') {
-                    hyperparams.b = document.getElementById('bco-b').value;
-                    hyperparams.nc = document.getElementById('bco-nc').value;
-                } else if (selectedAlgo === 'WOA') {
-                    hyperparams.woa_b = document.getElementById('woa-b').value;
-                }
+                
+                // Read global params into both for simplicity in this hybrid patch
+                if (document.getElementById('ga-pc')) hyperparams.pc = document.getElementById('ga-pc').value;
+                if (document.getElementById('ga-pm')) hyperparams.pm = document.getElementById('ga-pm').value;
+                if (document.getElementById('pso-w')) hyperparams.w = document.getElementById('pso-w').value;
+                if (document.getElementById('pso-c1')) hyperparams.c1 = document.getElementById('pso-c1').value;
+                if (document.getElementById('pso-c2')) hyperparams.c2 = document.getElementById('pso-c2').value;
+                if (document.getElementById('bco-b')) hyperparams.b = document.getElementById('bco-b').value;
+                if (document.getElementById('bco-nc')) hyperparams.nc = document.getElementById('bco-nc').value;
+                if (document.getElementById('woa-b')) hyperparams.woa_b = document.getElementById('woa-b').value;
 
-                const results = await window.pywebview.api.run_simulation(popSize, iterations, selectedAlgo, seed, hyperparams);
+                let payload = {
+                    mode: currentMode,
+                    pop_size: popSize,
+                    seed: seed,
+                    algo1: algo1,
+                    iter1: iterations,
+                    params1: hyperparams,
+                    algo2: algo2,
+                    iter2: iter2,
+                    params2: hyperparams // Reuse global params for Phase 2 for simplicity
+                };
+
+                const results = await window.pywebview.api.run_simulation(payload);
                 
                 if(results.error) {
                     alert("Error: " + results.error);
@@ -557,11 +645,12 @@
                     
                     let color = '#4cd7f6'; // GA (Cyan)
                     if(results.algorithm === 'PSO') color = '#fbabff'; // PSO (Pink)
-                    if(results.algorithm === 'GWO') color = '#ae05c6'; // GWO (Purple)
-                    if(results.algorithm === 'BCO') color = '#f59e0b'; // BCO (Amber/Orange)
-                    if(results.algorithm === 'WOA') color = '#3b82f6'; // WOA (Blue)
-                    if(results.algorithm === 'RR') color = '#10b981'; // RR (Emerald)
-                    if(results.algorithm === 'SJF') color = '#ef4444'; // SJF (Red)
+                    else if(results.algorithm === 'GWO') color = '#ae05c6'; // GWO (Purple)
+                    else if(results.algorithm === 'BCO') color = '#f59e0b'; // BCO (Amber/Orange)
+                    else if(results.algorithm === 'WOA') color = '#3b82f6'; // WOA (Blue)
+                    else if(results.algorithm === 'RR') color = '#10b981'; // RR (Emerald)
+                    else if(results.algorithm === 'SJF') color = '#ef4444'; // SJF (Red)
+                    else if(results.mode === 'Hybrid') color = `hsl(${Math.floor(Math.random() * 360)}, 80%, 60%)`; // Hybrid (Random color)
 
                     const datasetLabel = `${results.algorithm} Fitness`;
                     let existingLineIdx = convergenceChart.data.datasets.findIndex(d => d.label === datasetLabel);
