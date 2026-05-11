@@ -21,6 +21,15 @@ class Api:
     def set_window(self, window):
         self._window = window
 
+    def log(self, message):
+        print(message)
+        if self._window:
+            safe_msg = message.replace('\\', '\\\\').replace('`', '\\`')
+            try:
+                self._window.evaluate_js(f"window.addDebugLog(`{safe_msg}`)")
+            except:
+                pass
+
     def get_nodes(self):
         """Returns the current list of nodes for the UI table."""
         node_data = []
@@ -69,24 +78,24 @@ class Api:
             if algo == "GA":
                 pc = float(params.get("pc", 0.95))
                 pm = float(params.get("pm", 0.02))
-                opt = GeneticAlgorithmOptimizer(self.jobs, self.nodes, population_size=pop_size, generations=iters, crossover_rate=pc, mutation_rate=pm, ext_freq=ext_freq, ext_percent=ext_percent, cost_weight=cost_weight)
+                opt = GeneticAlgorithmOptimizer(self.jobs, self.nodes, population_size=pop_size, generations=iters, crossover_rate=pc, mutation_rate=pm, ext_freq=ext_freq, ext_percent=ext_percent, cost_weight=cost_weight, log_callback=self.log)
                 return opt.optimize(initial_pop)
             elif algo == "PSO":
                 w = float(params.get("w", 0.7))
                 c1 = float(params.get("c1", 1.5))
                 c2 = float(params.get("c2", 1.5))
-                opt = ParticleSwarmOptimizer(self.jobs, self.nodes, population_size=pop_size, iterations=iters, inertia_weight=w, c1=c1, c2=c2, ext_freq=ext_freq, ext_percent=ext_percent, cost_weight=cost_weight)
+                opt = ParticleSwarmOptimizer(self.jobs, self.nodes, population_size=pop_size, iterations=iters, inertia_weight=w, c1=c1, c2=c2, ext_freq=ext_freq, ext_percent=ext_percent, cost_weight=cost_weight, log_callback=self.log)
                 return opt.optimize(initial_pop)
             elif algo == "GWO":
-                opt = GreyWolfOptimizer(self.jobs, self.nodes, population_size=pop_size, iterations=iters, ext_freq=ext_freq, ext_percent=ext_percent, cost_weight=cost_weight)
+                opt = GreyWolfOptimizer(self.jobs, self.nodes, population_size=pop_size, iterations=iters, ext_freq=ext_freq, ext_percent=ext_percent, cost_weight=cost_weight, log_callback=self.log)
                 return opt.optimize(initial_pop)
             elif algo == "BCO":
                 nc = int(params.get("nc", 5))
-                opt = BeeColonyOptimization(self.jobs, self.nodes, population_size=pop_size, iterations=iters, nc=nc, ext_freq=ext_freq, ext_percent=ext_percent, cost_weight=cost_weight)
+                opt = BeeColonyOptimization(self.jobs, self.nodes, population_size=pop_size, iterations=iters, nc=nc, ext_freq=ext_freq, ext_percent=ext_percent, cost_weight=cost_weight, log_callback=self.log)
                 return opt.optimize(initial_pop)
             elif algo == "WOA":
                 b_val = float(params.get("woa_b", 1.0))
-                opt = WhaleOptimizationOptimizer(self.jobs, self.nodes, population_size=pop_size, iterations=iters, b=b_val, ext_freq=ext_freq, ext_percent=ext_percent, cost_weight=cost_weight)
+                opt = WhaleOptimizationOptimizer(self.jobs, self.nodes, population_size=pop_size, iterations=iters, b=b_val, ext_freq=ext_freq, ext_percent=ext_percent, cost_weight=cost_weight, log_callback=self.log)
                 return opt.optimize(initial_pop)
             elif algo == "RR":
                 assignments = round_robin_scheduler(self.jobs, self.nodes)
@@ -108,14 +117,17 @@ class Api:
                 raise ValueError("Unknown algorithm")
 
         try:
+            self.log(f"\n--- Starting {mode} Execution ---")
             if mode == "Single":
                 assignments, ms, cost, hist, final_pop = run_algo(algo1, iter1, None, params1)
                 algo_name = algo1
+                self.log(f"--- {algo1} finished ---")
             else:
                 _, _, _, hist1, pop1 = run_algo(algo1, iter1, None, params1)
                 assignments, ms, cost, hist2, final_pop = run_algo(algo2, iter2, pop1, params2)
                 hist = hist1 + hist2
                 algo_name = f"{algo1} + {algo2}"
+                self.log(f"--- Hybrid {algo_name} finished ---")
 
             # Serialize assignments
             serialized_assignments = {}

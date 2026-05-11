@@ -12,7 +12,8 @@ class GeneticAlgorithmOptimizer:
                  generations: int = 50,
                  ext_freq: int = 0,
                  ext_percent: float = 0.10,
-                 cost_weight: float = 0.5):
+                 cost_weight: float = 0.5,
+                 log_callback=None):
         self.jobs = jobs
         self.nodes = nodes
         self.population_size = population_size
@@ -22,6 +23,7 @@ class GeneticAlgorithmOptimizer:
         self.ext_freq = ext_freq
         self.ext_percent = ext_percent
         self.cost_weight = cost_weight
+        self.log_callback = log_callback
         self.num_jobs = len(jobs)
         self.num_nodes = len(nodes)
 
@@ -82,11 +84,15 @@ class GeneticAlgorithmOptimizer:
                 best_cost = evaluated[current_best_idx][2]
 
             history.append(best_fitness)
+            if self.log_callback and (generation + 1) % 10 == 0:
+                self.log_callback(f"Generation {generation + 1}: Best Fitness = {best_fitness:.4f}")
 
             # Diversity Extension Mechanism
             if self.ext_freq > 0 and (generation + 1) % self.ext_freq == 0:
                 num_replace = int(self.population_size * self.ext_percent)
                 if num_replace > 0:
+                    if self.log_callback:
+                        self.log_callback(f"Diversity Extension triggered: Replacing {num_replace} worst agents.")
                     sorted_indices = sorted(range(self.population_size), key=lambda i: fitnesses[i], reverse=True)
                     for idx in sorted_indices[:num_replace]:
                         population[idx] = [random.randint(0, self.num_nodes - 1) for _ in range(self.num_jobs)]
@@ -122,7 +128,8 @@ class GreyWolfOptimizer:
                  iterations: int = 50,
                  ext_freq: int = 0,
                  ext_percent: float = 0.10,
-                 cost_weight: float = 0.5):
+                 cost_weight: float = 0.5,
+                 log_callback=None):
         self.jobs = jobs
         self.nodes = nodes
         self.population_size = population_size
@@ -130,6 +137,7 @@ class GreyWolfOptimizer:
         self.ext_freq = ext_freq
         self.ext_percent = ext_percent
         self.cost_weight = cost_weight
+        self.log_callback = log_callback
         self.num_jobs = len(jobs)
         self.num_nodes = len(nodes)
         self.index_to_node_id = {i: node.node_id for i, node in enumerate(nodes)}
@@ -191,11 +199,15 @@ class GreyWolfOptimizer:
                     delta_score, delta_pos = fitness, population[i].copy()
 
             history.append(alpha_score)
+            if self.log_callback and (t + 1) % 10 == 0:
+                self.log_callback(f"Iteration {t + 1}: Alpha Score = {alpha_score:.4f}")
             
             # Diversity Extension Mechanism
             if self.ext_freq > 0 and (t + 1) % self.ext_freq == 0:
                 num_replace = int(self.population_size * self.ext_percent)
                 if num_replace > 0:
+                    if self.log_callback:
+                        self.log_callback(f"Diversity Extension triggered: Replacing {num_replace} worst agents.")
                     sorted_indices = sorted(range(self.population_size), key=lambda i: current_fitnesses[i], reverse=True)
                     for idx in sorted_indices[:num_replace]:
                         population[idx] = [random.uniform(0, self.num_nodes - 1) for _ in range(self.num_jobs)]
@@ -231,7 +243,8 @@ class ParticleSwarmOptimizer:
                  c2: float = 1.5,
                  ext_freq: int = 0,
                  ext_percent: float = 0.10,
-                 cost_weight: float = 0.5):
+                 cost_weight: float = 0.5,
+                 log_callback=None):
         self.jobs = jobs
         self.nodes = nodes
         self.population_size = population_size
@@ -242,6 +255,7 @@ class ParticleSwarmOptimizer:
         self.ext_freq = ext_freq
         self.ext_percent = ext_percent
         self.cost_weight = cost_weight
+        self.log_callback = log_callback
         self.num_jobs = len(jobs)
         self.num_nodes = len(nodes)
         self.index_to_node_id = {i: node.node_id for i, node in enumerate(nodes)}
@@ -295,11 +309,15 @@ class ParticleSwarmOptimizer:
                     gbest_cost = cost
             
             history.append(gbest_score)
+            if self.log_callback and (t + 1) % 10 == 0:
+                self.log_callback(f"Iteration {t + 1}: Global Best = {gbest_score:.4f}")
             
             # Diversity Extension Mechanism
             if self.ext_freq > 0 and (t + 1) % self.ext_freq == 0:
                 num_replace = int(self.population_size * self.ext_percent)
                 if num_replace > 0:
+                    if self.log_callback:
+                        self.log_callback(f"Diversity Extension triggered: Replacing {num_replace} worst agents.")
                     sorted_indices = sorted(range(self.population_size), key=lambda i: pbest_scores[i], reverse=True)
                     for idx in sorted_indices[:num_replace]:
                         particles[idx] = [random.uniform(0, self.num_nodes - 1) for _ in range(self.num_jobs)]
@@ -327,7 +345,8 @@ class BeeColonyOptimization:
                  nc: int = 5,
                  ext_freq: int = 0,
                  ext_percent: float = 0.10,
-                 cost_weight: float = 0.5):
+                 cost_weight: float = 0.5,
+                 log_callback=None):
         self.jobs = jobs
         self.nodes = nodes
         self.population_size = population_size
@@ -336,6 +355,7 @@ class BeeColonyOptimization:
         self.ext_freq = ext_freq
         self.ext_percent = ext_percent
         self.cost_weight = cost_weight
+        self.log_callback = log_callback
         self.num_jobs = len(jobs)
         self.num_nodes = len(nodes)
         self.index_to_node_id = {i: node.node_id for i, node in enumerate(nodes)}
@@ -456,6 +476,8 @@ class BeeColonyOptimization:
                 
             best_fit_current = bee_fitnesses[sorted_indices[0]]
             history.append(best_fit_current)
+            if self.log_callback and (t + 1) % 10 == 0:
+                self.log_callback(f"Iteration {t + 1}: Current Best Fitness = {best_fit_current:.4f}")
             
             t += 1
             
@@ -490,7 +512,8 @@ class WhaleOptimizationOptimizer:
                  a_step: float = None,
                  ext_freq: int = 0,
                  ext_percent: float = 0.10,
-                 cost_weight: float = 0.5):
+                 cost_weight: float = 0.5,
+                 log_callback=None):
         self.jobs = jobs
         self.nodes = nodes
         self.population_size = population_size
@@ -501,6 +524,7 @@ class WhaleOptimizationOptimizer:
         self.ext_freq = ext_freq
         self.ext_percent = ext_percent
         self.cost_weight = cost_weight
+        self.log_callback = log_callback
         self.num_jobs = len(jobs)
         self.num_nodes = len(nodes)
         self.index_to_node_id = {i: node.node_id for i, node in enumerate(nodes)}
@@ -549,11 +573,15 @@ class WhaleOptimizationOptimizer:
                     best_cost = cst
             
             history.append(best_fitness)
+            if self.log_callback and (t + 1) % 10 == 0:
+                self.log_callback(f"Iteration {t + 1}: Best Fitness = {best_fitness:.4f}")
             
             # Diversity Extension Mechanism
             if self.ext_freq > 0 and (t + 1) % self.ext_freq == 0:
                 num_replace = int(self.population_size * self.ext_percent)
                 if num_replace > 0:
+                    if self.log_callback:
+                        self.log_callback(f"Diversity Extension triggered: Replacing {num_replace} worst agents.")
                     sorted_indices = np.argsort(current_fitnesses)[::-1] # descending
                     for idx in sorted_indices[:num_replace]:
                         sols[idx] = np.random.uniform(0.0, float(self.num_nodes - 1), size=self.num_jobs)
