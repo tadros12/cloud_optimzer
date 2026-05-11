@@ -53,7 +53,7 @@ class GeneticAlgorithmOptimizer:
         Fitness = Makespan + (Cost * 100)
         """
         # Create a temporary list of nodes for simulation to avoid modifying original nodes
-        temp_nodes = [Node(n.node_id, n.capacity_cu) for n in self.nodes]
+        temp_nodes = [Node(n.node_id, n.capacity_cu, n.price_per_hour) for n in self.nodes]
         
         # Apply the assignments from the chromosome to the temporary nodes
         assignments = self._chromosome_to_assignments(chromosome)
@@ -144,3 +144,98 @@ class GeneticAlgorithmOptimizer:
             raise Exception("Genetic Algorithm failed to find a solution.")
 
         return self._chromosome_to_assignments(best_chromosome)
+
+
+class PSO:
+    def __init__(
+        self,
+        jobs: List[Job],
+        nodes: List[Node],
+        swarm_size: int = 20,
+        max_iter: int = 50,
+        inertia: float = 0.7,
+        cognitive: float = 1.4,
+        social: float = 1.4,
+    ):
+        if not nodes:
+            raise ValueError("No nodes available for PSO scheduling.")
+        self.jobs = jobs
+        self.nodes = nodes
+        self.swarm_size = swarm_size
+        self.max_iter = max_iter
+        self.inertia = inertia
+        self.cognitive = cognitive
+        self.social = social
+
+    def _decode(self, position: List[float]) -> List[int]:
+        node_max = len(self.nodes) - 1
+        return [max(0, min(node_max, int(round(value)))) for value in position]
+
+    def _to_assignments(self, encoded: List[int]) -> Dict[str, List[Job]]:
+        assignments: Dict[str, List[Job]] = {node.node_id: [] for node in self.nodes}
+        for job_index, node_index in enumerate(encoded):
+            assignments[self.nodes[node_index].node_id].append(self.jobs[job_index])
+        return assignments
+
+    def _fitness(self, encoded: List[int]) -> float:
+        temp_nodes = [Node(n.node_id, n.capacity_cu, n.price_per_hour) for n in self.nodes]
+        assignments = self._to_assignments(encoded)
+        for node in temp_nodes:
+            node.assigned_jobs = assignments.get(node.node_id, [])
+            node.current_utilization_cu = sum(job.workload_cu for job in node.assigned_jobs)
+
+        engine = SimulationEngine(self.jobs, temp_nodes)
+        makespan = engine.calculate_makespan()
+        cost = engine.calculate_execution_cost()
+        return makespan + (cost * 100)
+
+    def optimize(self) -> Dict[str, List[Job]]:
+        if not self.jobs:
+            return {node.node_id: [] for node in self.nodes}
+
+        num_jobs = len(self.jobs)
+        num_nodes = len(self.nodes)
+
+        particles = [
+            [random.uniform(0, num_nodes - 1) for _ in range(num_jobs)]
+            for _ in range(self.swarm_size)
+        ]
+        velocities = [
+            [random.uniform(-1, 1) for _ in range(num_jobs)]
+            for _ in range(self.swarm_size)
+        ]
+
+        personal_best_positions = [list(p) for p in particles]
+        personal_best_scores = [self._fitness(self._decode(p)) for p in particles]
+
+        best_particle_index = min(range(self.swarm_size), key=lambda idx: personal_best_scores[idx])
+        global_best_position = list(personal_best_positions[best_particle_index])
+        global_best_score = personal_best_scores[best_particle_index]
+
+        for _ in range(self.max_iter):
+            for p_idx in range(self.swarm_size):
+                for j_idx in range(num_jobs):
+                    r1 = random.random()
+                    r2 = random.random()
+                    velocities[p_idx][j_idx] = (
+                        self.inertia * velocities[p_idx][j_idx]
+                        + self.cognitive
+                        * r1
+                        * (personal_best_positions[p_idx][j_idx] - particles[p_idx][j_idx])
+                        + self.social
+                        * r2
+                        * (global_best_position[j_idx] - particles[p_idx][j_idx])
+                    )
+                    particles[p_idx][j_idx] += velocities[p_idx][j_idx]
+                    particles[p_idx][j_idx] = max(0.0, min(num_nodes - 1.0, particles[p_idx][j_idx]))
+
+                current_score = self._fitness(self._decode(particles[p_idx]))
+                if current_score < personal_best_scores[p_idx]:
+                    personal_best_scores[p_idx] = current_score
+                    personal_best_positions[p_idx] = list(particles[p_idx])
+
+                if current_score < global_best_score:
+                    global_best_score = current_score
+                    global_best_position = list(particles[p_idx])
+
+        return self._to_assignments(self._decode(global_best_position))
