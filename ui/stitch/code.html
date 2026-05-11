@@ -55,8 +55,11 @@
 
     <!-- Navigation -->
     <div class="flex-1 py-4 flex flex-col gap-2 flex-shrink-0">
-        <a class="flex items-center gap-4 px-6 py-2 text-primary font-bold border-r-2 border-primary bg-primary/10" href="#">
+        <a id="nav-control" class="nav-item flex items-center gap-4 px-6 py-2 text-primary font-bold border-r-2 border-primary bg-primary/10" href="#" onclick="switchTab('control')">
             <span class="material-symbols-outlined">dashboard</span> Control Center
+        </a>
+        <a id="nav-assign" class="nav-item flex items-center gap-4 px-6 py-2 text-on-surface-variant hover:text-primary transition-colors font-bold border-r-2 border-transparent" href="#" onclick="switchTab('assign')">
+            <span class="material-symbols-outlined">list_alt</span> Assignments
         </a>
     </div>
 
@@ -66,14 +69,14 @@
         <!-- Algorithm Selection -->
         <div class="flex flex-col gap-2">
             <label class="text-xs font-bold tracking-widest uppercase text-on-surface-variant">Algorithm</label>
-            <div class="flex p-1 bg-surface-container-highest rounded-full border border-outline-variant/30" id="algo-group">
-                <button class="algo-btn flex-1 py-1 rounded-full bg-primary text-black text-xs font-bold shadow-sm">GA</button>
-                <button class="algo-btn flex-1 py-1 rounded-full bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">PSO</button>
-                <button class="algo-btn flex-1 py-1 rounded-full bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">GWO</button>
-                <button class="algo-btn flex-1 py-1 rounded-full bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">BCO</button>
-                <button class="algo-btn flex-1 py-1 rounded-full bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">WOA</button>
-                <button class="algo-btn flex-1 py-1 rounded-full bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">RR</button>
-                <button class="algo-btn flex-1 py-1 rounded-full bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">SJF</button>
+            <div class="flex flex-wrap gap-1 p-1 bg-surface-container-highest rounded-xl border border-outline-variant/30" id="algo-group">
+                <button class="algo-btn flex-1 min-w-[30%] py-2 rounded-lg bg-primary text-black text-xs font-bold shadow-sm">GA</button>
+                <button class="algo-btn flex-1 min-w-[30%] py-2 rounded-lg bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">PSO</button>
+                <button class="algo-btn flex-1 min-w-[30%] py-2 rounded-lg bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">GWO</button>
+                <button class="algo-btn flex-1 min-w-[30%] py-2 rounded-lg bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">BCO</button>
+                <button class="algo-btn flex-1 min-w-[30%] py-2 rounded-lg bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">WOA</button>
+                <button class="algo-btn flex-1 min-w-[30%] py-2 rounded-lg bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">RR</button>
+                <button class="algo-btn flex-1 min-w-[30%] py-2 rounded-lg bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors">SJF</button>
             </div>
         </div>
 
@@ -202,11 +205,12 @@
 </aside>
 
 <!-- Main Canvas -->
-<main class="ml-64 p-8 h-screen overflow-y-auto flex flex-col gap-8">
+<main id="view-control" class="ml-64 p-8 h-screen overflow-y-auto flex flex-col gap-8">
     
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 h-96">
         <!-- Convergence Chart Container -->
-        <div class="glass-panel rounded-xl p-6 flex flex-col relative h-full">
+        <div class="relative h-full w-full">
+        <div class="glass-panel rounded-xl p-6 flex flex-col relative h-full w-full transition-all duration-300">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-lg font-bold text-on-surface">Fitness Score vs. Generation</h2>
                 <div class="flex items-center gap-2">
@@ -220,9 +224,11 @@
                 <canvas id="convergenceChart"></canvas>
             </div>
         </div>
+        </div>
 
         <!-- Makespan vs Cost Chart Container -->
-        <div class="glass-panel rounded-xl p-6 flex flex-col relative h-full">
+        <div class="relative h-full w-full">
+        <div class="glass-panel rounded-xl p-6 flex flex-col relative h-full w-full transition-all duration-300">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-lg font-bold text-on-surface">Makespan vs. Execution Cost</h2>
                 <div class="flex items-center gap-2">
@@ -235,6 +241,7 @@
             <div class="flex-1 relative w-full h-full">
                 <canvas id="barChart"></canvas>
             </div>
+        </div>
         </div>
     </div>
 
@@ -264,28 +271,116 @@
     </div>
 </main>
 
+<!-- Assignments Dashboard -->
+<main id="view-assign" class="ml-64 p-8 h-screen overflow-y-auto flex flex-col gap-8 hidden">
+    <div class="glass-panel rounded-xl p-6 flex-1 min-h-[300px] flex flex-col">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-lg font-bold text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary">assignment</span> Job Assignments by Node
+            </h2>
+            <div id="assign-algo-tabs" class="flex gap-2">
+                <!-- Tabs will be populated here -->
+            </div>
+        </div>
+        <div id="assignments-content" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 text-on-surface">
+            <div class="text-center py-8 text-on-surface-variant lg:col-span-full">Run a simulation to view assignments.</div>
+        </div>
+    </div>
+</main>
+
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        window.toggleFullscreen = (element) => {
-            if (element.classList.contains('fixed')) {
-                
-                element.classList.remove('fixed', 'inset-0', 'z-[100]', 'bg-[#0e1416]');
-                element.style.height = '';
-                element.style.width = '';
-                element.classList.add('relative');
+        window.allAssignments = {};
+        window.renderAssignments = (algoToRender) => {
+            const tabsContainer = document.getElementById('assign-algo-tabs');
+            tabsContainer.innerHTML = '';
+            
+            // Build tabs
+            Object.keys(window.allAssignments).forEach(algo => {
+                const btn = document.createElement('button');
+                btn.className = `px-3 py-1 rounded-full text-xs font-bold transition-colors ${algo === algoToRender ? 'bg-primary text-black' : 'bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white'}`;
+                btn.textContent = algo;
+                btn.onclick = () => window.renderAssignments(algo);
+                tabsContainer.appendChild(btn);
+            });
 
-                element.querySelector('.fullscreen-icon').textContent = 'fullscreen';
-            } else {
-                
-                element.classList.remove('relative');
-                element.classList.add('fixed', 'inset-0', 'z-[100]', 'bg-[#0e1416]');
-                element.style.height = '100vh';
-                element.style.width = '100vw';
-
-                element.querySelector('.fullscreen-icon').textContent = 'fullscreen_exit';
+            const content = document.getElementById('assignments-content');
+            content.innerHTML = '';
+            
+            const assignments = window.allAssignments[algoToRender];
+            if (assignments) {
+                for (const [nodeId, jobs] of Object.entries(assignments)) {
+                    let totalDur = 0;
+                    let totalWorkload = 0;
+                    // For performance with 1000+ jobs, build HTML string
+                    let jobHtml = '';
+                    jobs.forEach(j => {
+                        totalDur += j.duration;
+                        totalWorkload += j.workload;
+                        jobHtml += `<div class="bg-black/30 p-2 rounded text-xs flex justify-between"><span>${j.id}</span><span class="text-primary">${j.duration.toFixed(2)}s</span></div>`;
+                    });
+                    
+                    content.innerHTML += `
+                        <div class="bg-surface-container-highest/50 p-4 rounded-xl border border-outline-variant/20 flex flex-col gap-3 h-80">
+                            <div class="flex justify-between items-center border-b border-white/5 pb-2">
+                                <h3 class="font-bold text-primary">${nodeId}</h3>
+                                <div class="flex flex-col items-end">
+                                    <span class="text-xs text-on-surface-variant font-mono text-secondary">${totalDur.toFixed(2)}s Total</span>
+                                    <span class="text-[10px] text-on-surface-variant">${jobs.length} jobs</span>
+                                </div>
+                            </div>
+                            <div class="flex flex-col gap-1 overflow-y-auto pr-1 custom-scrollbar flex-1">
+                                ${jobHtml || '<span class="text-xs text-on-surface-variant italic">No jobs assigned.</span>'}
+                            </div>
+                        </div>
+                    `;
+                }
             }
+        };
+
+        window.switchTab = (tab) => {
+            document.getElementById('view-control').classList.add('hidden');
+            document.getElementById('view-assign').classList.add('hidden');
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.className = 'nav-item flex items-center gap-4 px-6 py-2 text-on-surface-variant hover:text-primary transition-colors font-bold border-r-2 border-transparent';
+            });
+            document.getElementById(`nav-${tab}`).className = 'nav-item flex items-center gap-4 px-6 py-2 text-primary font-bold border-r-2 border-primary bg-primary/10';
+            
+            // Re-render charts slightly after to ensure they map to visible container
             setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
         };
+
+                window.toggleFullscreen = (element) => {
+
+                    if (element.classList.contains('!fixed')) {
+
+                        
+
+                        element.classList.remove('!fixed', '!inset-0', '!z-[9999]', '!bg-[#0e1416]', '!h-screen', '!w-screen', '!rounded-none', '!p-8');
+
+                        element.classList.add('relative', 'rounded-xl');
+
+        
+
+                        element.querySelector('.fullscreen-icon').textContent = 'fullscreen';
+
+                    } else {
+
+                        
+
+                        element.classList.remove('relative', 'rounded-xl');
+
+                        element.classList.add('!fixed', '!inset-0', '!z-[9999]', '!bg-[#0e1416]', '!h-screen', '!w-screen', '!rounded-none', '!p-8');
+
+                        element.querySelector('.fullscreen-icon').textContent = 'fullscreen_exit';
+
+                    }
+
+                    setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+
+                };
 
         
         // Sync Range and Input fields
@@ -308,9 +403,9 @@
         algoBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 algoBtns.forEach(b => {
-                    b.className = 'algo-btn flex-1 py-1 rounded-full bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors';
+                    b.className = 'algo-btn flex-1 min-w-[30%] py-2 rounded-lg bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-white text-xs font-bold transition-colors';
                 });
-                e.target.className = 'algo-btn flex-1 py-1 rounded-full bg-primary text-black text-xs font-bold shadow-sm';
+                e.target.className = 'algo-btn flex-1 min-w-[30%] py-2 rounded-lg bg-primary text-black text-xs font-bold shadow-sm';
                 selectedAlgo = e.target.textContent.trim();
                 
                 // Toggle hyperparams visibility
@@ -499,6 +594,12 @@
                         });
                     }
                     barChart.update();
+
+                    // Store Assignments for all runs
+                    if (!window.allAssignments) window.allAssignments = {};
+                    window.allAssignments[results.algorithm] = results.assignments;
+                    window.renderAssignments(results.algorithm);
+
                 }
             } catch (error) {
                 console.error("Simulation failed:", error);

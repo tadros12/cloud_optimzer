@@ -3,7 +3,7 @@ import webview
 import json
 import random
 import threading
-from src.data_loader import generate_nodes
+from src.data_loader import generate_nodes, load_jobs_from_csv
 from src.optimizers import GeneticAlgorithmOptimizer, GreyWolfOptimizer, ParticleSwarmOptimizer, BeeColonyOptimization, WhaleOptimizationOptimizer
 from src.models import Job
 from src.baselines import round_robin_scheduler, shortest_job_first_scheduler
@@ -12,7 +12,10 @@ from src.engine import SimulationEngine
 class Api:
     def __init__(self):
         self.nodes = generate_nodes()
-        self.jobs = [Job(job_id=f"job_{i}", workload_cu=float(i*2), duration=float(i)) for i in range(1, 11)]
+        try:
+            self.jobs = load_jobs_from_csv("data/clean_google_jobs.csv")
+        except:
+            self.jobs = [Job(job_id=f"job_{i}", workload_cu=float(i*2), duration=float(i)) for i in range(1, 101)]
         self._window = None
 
     def set_window(self, window):
@@ -110,10 +113,16 @@ class Api:
             else:
                 raise ValueError("Unknown algorithm")
 
+            # Serialize assignments
+            serialized_assignments = {}
+            for node_id, job_list in assignments.items():
+                serialized_assignments[node_id] = [{"id": j.job_id, "workload": j.workload_cu, "duration": j.duration} for j in job_list]
+
             # Store the real calculated values
             result_data["makespan"] = round(makespan, 2)
             result_data["cost"] = round(cost, 2)
             result_data["convergence_history"] = history
+            result_data["assignments"] = serialized_assignments
                 
         except Exception as e:
             print(f"Error during optimization: {e}")
