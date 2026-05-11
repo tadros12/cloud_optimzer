@@ -9,3 +9,8 @@ wheels/
 # Virtual environments
 .venv
 borg_traces_data.csv
+run_experiments.py
+experiment_results.csv
+CoverSheet.docx
+GEMINI.md
+run_experiments copy.py
