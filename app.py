@@ -60,8 +60,8 @@ def run_simulation(
     jobs: List[Job],
     nodes: List[Node],
     scheduler_name: str,
-    pop_size: int,
-    generations: int,
+    ga_params: Dict[str, Any],
+    pso_params: Dict[str, Any],
 ) -> Dict[str, Any]:
     engine = SimulationEngine(jobs, nodes)
     
@@ -75,12 +75,22 @@ def run_simulation(
         ga_optimizer = GeneticAlgorithmOptimizer(
             jobs,
             nodes,
-            population_size=pop_size,
-            generations=generations,
+            population_size=ga_params["population_size"],
+            crossover_rate=ga_params["crossover_rate"],
+            mutation_rate=ga_params["mutation_rate"],
+            generations=ga_params["generations"],
         )
         assignments = ga_optimizer.optimize()
     elif scheduler_name == "Particle Swarm (PSO)":
-        pso_optimizer = PSO(jobs, nodes, swarm_size=pop_size, max_iter=generations)
+        pso_optimizer = PSO(
+            jobs,
+            nodes,
+            swarm_size=pso_params["swarm_size"],
+            max_iter=pso_params["max_iter"],
+            inertia=pso_params["inertia"],
+            cognitive=pso_params["cognitive"],
+            social=pso_params["social"],
+        )
         assignments = pso_optimizer.optimize()
     else:
         return {}
@@ -150,9 +160,18 @@ selected_schedulers = st.sidebar.multiselect(
     default=["Shortest Job First (SJF)", "Genetic Algorithm (GA)", "Particle Swarm (PSO)"],
 )
 
-st.sidebar.subheader("Optimizer Parameters")
-pop_size = st.sidebar.slider("Population/Swarm Size", 10, 200, 30, step=5)
-generations = st.sidebar.slider("Iterations", 10, 300, 60, step=5)
+st.sidebar.subheader("GA Parameters")
+ga_population_size = st.sidebar.slider("GA Population Size", 10, 200, 30, step=5)
+ga_generations = st.sidebar.slider("GA Generations", 10, 300, 60, step=5)
+ga_crossover_rate = st.sidebar.slider("GA CR (Crossover Rate)", 0.1, 1.0, 0.95, step=0.01)
+ga_mutation_rate = st.sidebar.slider("GA MR (Mutation Rate)", 0.0, 0.5, 0.02, step=0.01)
+
+st.sidebar.subheader("PSO Parameters")
+pso_swarm_size = st.sidebar.slider("PSO Swarm Size", 10, 200, 30, step=5)
+pso_max_iter = st.sidebar.slider("PSO Iterations", 10, 300, 60, step=5)
+pso_inertia = st.sidebar.slider("PSO w (Inertia)", 0.1, 1.5, 0.7, step=0.05)
+pso_c1 = st.sidebar.slider("PSO c1 (Cognitive)", 0.1, 3.0, 1.4, step=0.1)
+pso_c2 = st.sidebar.slider("PSO c2 (Social)", 0.1, 3.0, 1.4, step=0.1)
 jobs_file_path = "data/clean_google_jobs.csv"
 
 # --- 4. MAIN DASHBOARD: DATA PREP & LOGGING ---
@@ -204,8 +223,19 @@ with col_log:
                     st.session_state['jobs'],
                     sim_nodes,
                     scheduler_name,
-                    pop_size,
-                    generations,
+                    ga_params={
+                        "population_size": ga_population_size,
+                        "generations": ga_generations,
+                        "crossover_rate": ga_crossover_rate,
+                        "mutation_rate": ga_mutation_rate,
+                    },
+                    pso_params={
+                        "swarm_size": pso_swarm_size,
+                        "max_iter": pso_max_iter,
+                        "inertia": pso_inertia,
+                        "cognitive": pso_c1,
+                        "social": pso_c2,
+                    },
                 )
                 results[scheduler_name] = simulation_results
                 
