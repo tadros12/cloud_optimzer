@@ -18,3 +18,5 @@ CoverSheet.docx
 /CI-theoretical-paper
 run_extended_experiments.py
 progress.log
+hyperparam_results.csv
+run_hyperparam_experiments.py
