@@ -14,3 +14,7 @@ run_experiments.py
 run_experiments copy.py
 experiment_results.csv
 CoverSheet.docx
+/CI-project-docs
+/CI-theoretical-paper
+run_extended_experiments.py
+progress.log
